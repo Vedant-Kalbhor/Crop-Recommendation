@@ -1,0 +1,132 @@
+crop-recommendation-system/
+├── frontend/                 # React.js Frontend Application
+│   ├── public/
+│   │   ├── index.html
+│   │   ├── favicon.ico
+│   │   └── manifest.json
+│   ├── src/
+│   │   ├── components/       # Reusable UI Components
+│   │   │   ├── Navbar.js
+│   │   │   ├── PrivateRoute.js
+│   │   │   ├── SoilParamsForm.js
+│   │   │   ├── SoilImageForm.js
+│   │   │   ├── RegionForm.js
+│   │   │   ├── WeatherCard.js
+│   │   │   └── CropCard.js
+│   │   ├── pages/           # Page Components
+│   │   │   ├── Dashboard.js
+│   │   │   ├── Login.js
+│   │   │   ├── Register.js
+│   │   │   ├── SoilAnalysis.js
+│   │   │   ├── ImageAnalysis.js
+│   │   │   └── RegionAnalysis.js
+│   │   ├── context/         # React Context for State Management
+│   │   │   └── AuthContext.js
+│   │   ├── services/        # API Service Functions
+│   │   │   ├── authAPI.js
+│   │   │   ├── recommendationAPI.js
+│   │   │   └── weatherAPI.js
+│   │   ├── utils/           # Utility Functions
+│   │   │   ├── helpers.js
+│   │   │   └── constants.js
+│   │   ├── styles/          # CSS/Styling Files
+│   │   │   ├── App.css
+│   │   │   ├── Dashboard.css
+│   │   │   └── Forms.css
+│   │   ├── App.js
+│   │   ├── App.test.js
+│   │   ├── index.js
+│   │   └── index.css
+│   ├── package.json
+│   ├── package-lock.json
+│   └── README.md
+├── backend/                  # Node.js/Express Backend
+│   ├── config/              # Configuration Files
+│   │   ├── database.js
+│   │   └── cloudinary.js    # For image uploads if needed
+│   ├── controllers/         # Route Controllers
+│   │   ├── authController.js
+│   │   ├── recommendationController.js
+│   │   ├── weatherController.js
+│   │   └── analyticsController.js
+│   ├── middleware/          # Custom Middleware
+│   │   ├── auth.js
+│   │   ├── validation.js
+│   │   └── upload.js        # For file uploads
+│   ├── models/              # MongoDB Schemas
+│   │   ├── User.js
+│   │   ├── Recommendation.js
+│   │   └── Crop.js
+│   ├── routes/              # API Routes
+│   │   ├── auth.js
+│   │   ├── recommendations.js
+│   │   ├── weather.js
+│   │   └── analytics.js
+│   ├── utils/               # Utility Functions
+│   │   ├── helpers.js
+│   │   ├── validation.js
+│   │   └── constants.js
+│   ├── .env                 # Environment Variables
+│   ├── .gitignore
+│   ├── package.json
+│   ├── package-lock.json
+│   ├── server.js           # Main Server File
+│   └── README.md
+├── ml-backend/              # FastAPI ML Backend
+│   ├── models/              # Trained ML Models
+│   │   ├── random_forest_model.pkl
+│   │   ├── cnn_soil_model.h5
+│   │   └── label_encoders.pkl
+│   ├── data/                # Datasets
+│   │   ├── region_crop_dataset.csv
+│   │   ├── soil_image_dataset/
+│   │   │   ├── train/
+│   │   │   │   ├── clay/
+│   │   │   │   ├── sandy/
+│   │   │   │   └── ...
+│   │   │   └── test/
+│   │   │       ├── clay/
+│   │   │       ├── sandy/
+│   │   │       └── ...
+│   │   └── crop_recommendation.csv
+│   ├── ml_models/           # ML Model Training Code
+│   │   ├── train_rf_model.py
+│   │   ├── train_cnn_model.py
+│   │   └── preprocess_data.py
+│   ├── schemas/             # Pydantic Schemas
+│   │   ├── soil_params.py
+│   │   ├── recommendation.py
+│   │   └── weather.py
+│   ├── services/            # Business Logic
+│   │   ├── prediction_service.py
+│   │   ├── weather_service.py
+│   │   └── image_processing.py
+│   ├── utils/               # Utility Functions
+│   │   ├── helpers.py
+│   │   ├── constants.py
+│   │   └── model_loader.py
+│   ├── tests/               # Test Files
+│   │   ├── test_soil_params.py
+│   │   ├── test_image_classification.py
+│   │   └── test_region_based.py
+│   ├── .env                 # Environment Variables
+│   ├── .gitignore
+│   ├── requirements.txt
+│   ├── main.py              # FastAPI Main Application
+│   └── README.md
+├── datasets/                # Original Datasets (optional)
+│   ├── crop_recommendation.csv
+│   ├── soil_images.zip
+│   └── region_crop_data.csv
+├── documentation/           # Project Documentation
+│   ├── API_Documentation.md
+│   ├── ML_Models.md
+│   └── User_Guide.md
+├── scripts/                 # Utility Scripts
+│   ├── setup_database.js
+│   ├── import_data.py
+│   └── backup_database.sh
+├── .gitignore
+├── LICENSE
+├── README.md                # Main Project README
+└── docker-compose.yml       # Docker configuration (optional)
