@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <link rel="icon" href="%PUBLIC_URL%/favicon.ico" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#000000" />
+    <meta
+      name="description"
+      content="Crop Recommendation System - Get intelligent crop suggestions based on soil parameters, soil images, and regional weather data using AI and machine learning."
+    />
+    <meta name="keywords" content="crop recommendation, agriculture, farming, soil analysis, machine learning, AI, crop prediction, farming technology" />
+    <meta name="author" content="CropRecommend Team" />
+    
+    <!-- Open Graph Meta Tags -->
+    <meta property="og:title" content="Crop Recommendation System - Smart Farming Solutions" />
+    <meta property="og:description" content="Get AI-powered crop recommendations based on soil analysis, weather data, and regional patterns for optimal farming results." />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://croprecommend.example.com" />
+    <meta property="og:image" content="%PUBLIC_URL%/og-image.png" />
+    
+    <!-- Twitter Card Meta Tags -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Crop Recommendation System" />
+    <meta name="twitter:description" content="AI-powered crop suggestions for modern farmers" />
+    <meta name="twitter:image" content="%PUBLIC_URL%/twitter-image.png" />
+    
+    <!-- Apple Touch Icon -->
+    <link rel="apple-touch-icon" href="%PUBLIC_URL%/logo192.png" />
+    
+    <!-- Manifest.json for PWA -->
+    <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
+    
+    <!-- Preload critical resources -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Structured Data for SEO -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebApplication",
+      "name": "Crop Recommendation System",
+      "description": "AI-powered crop recommendation system for farmers and agricultural professionals",
+      "url": "https://croprecommend.example.com",
+      "applicationCategory": "BusinessApplication",
+      "operatingSystem": "Web Browser",
+      "permissions": "geolocation",
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "USD"
+      }
+    }
+    </script>
+    
+    <title>CropRecommend - AI-Powered Crop Recommendation System</title>
+    
+    <!-- Critical CSS for above-the-fold content -->
+    <style>
+      /* Critical CSS to prevent layout shift */
+      body {
+        margin: 0;
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+          'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+          sans-serif;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+        background-color: #f5f7fa;
+      }
+      
+      /* Loading animation */
+      .app-loading {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      }
+      
+      .loading-spinner {
+        width: 50px;
+        height: 50px;
+        border: 4px solid #ffffff;
+        border-top: 4px solid transparent;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+      }
+      
+      @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+      }
+      
+      /* Ensure no scroll during loading */
+      .no-scroll {
+        overflow: hidden;
+      }
+    </style>
+  </head>
+  <body>
+    <noscript>
+      <div style="padding: 20px; text-align: center; background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb;">
+        <h2>JavaScript Required</h2>
+        <p>You need to enable JavaScript to run this application.</p>
+        <p>This is a modern web application that requires JavaScript for full functionality.</p>
+        <p>Please enable JavaScript in your browser settings and refresh the page.</p>
+      </div>
+    </noscript>
+    
+    <!-- Loading screen (removed by React) -->
+    <div id="loading" class="app-loading">
+      <div class="loading-content">
+        <div class="loading-spinner"></div>
+        <p style="color: white; margin-top: 20px; font-weight: 500;">Loading Crop Recommendation System...</p>
+      </div>
+    </div>
+    
+    <!-- Main app container -->
+    <div id="root"></div>
+    
+    <!-- Service Worker Registration -->
+    <script>
+      // Check if service workers are supported
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', function() {
+          navigator.serviceWorker.register('%PUBLIC_URL%/sw.js')
+            .then(function(registration) {
+              console.log('SW registered: ', registration);
+            })
+            .catch(function(registrationError) {
+              console.log('SW registration failed: ', registrationError);
+            });
+        });
+      }
+      
+      // Remove loading screen when app is ready
+      window.addEventListener('load', function() {
+        setTimeout(function() {
+          const loadingElement = document.getElementById('loading');
+          if (loadingElement) {
+            loadingElement.style.display = 'none';
+          }
+          document.body.classList.remove('no-scroll');
+        }, 1000);
+      });
+      
+      // Prevent right-click context menu in production
+      if (process.env.NODE_ENV === 'production') {
+        document.addEventListener('contextmenu', function(e) {
+          e.preventDefault();
+        });
+      }
+      
+      // Error handling for the application
+      window.addEventListener('error', function(e) {
+        console.error('Application error:', e.error);
+        // You could send this to an error tracking service
+      });
+    </script>
+    
+    <!-- Performance monitoring -->
+    <script>
+      // Track page load time
+      window.addEventListener('load', function() {
+        const loadTime = performance.now();
+        console.log('Page loaded in', loadTime, 'milliseconds');
+        
+        // Send to analytics if available
+        if (window.gtag) {
+          gtag('event', 'timing_complete', {
+            'name': 'load',
+            'value': Math.round(loadTime),
+            'event_category': 'Load Time'
+          });
+        }
+      });
+    </script>
+  </body>
+</html>
