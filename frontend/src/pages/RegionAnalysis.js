@@ -111,7 +111,7 @@ const RegionAnalysis = () => {
             
             {!useCurrentLocation && (
               <div className="form-group">
-                <label htmlFor="region">Region Name</label>
+                <label htmlFor="region">Region Name(Direction Wise)</label>
                 <input
                   type="text"
                   id="region"

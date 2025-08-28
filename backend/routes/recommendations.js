@@ -90,11 +90,17 @@ router.post('/soil-image', auth, async (req, res) => {
 });
 
 // Region-based recommendation
+// Region-based recommendation
 router.post('/region', auth, async (req, res) => {
   try {
     const { region, lat, lng } = req.body;
     
-    // Call ML API
+    // Validate input
+    if (!region && (!lat || !lng)) {
+      return res.status(400).json({ message: 'Either region or coordinates are required' });
+    }
+    
+    // Call ML API with JSON body
     const response = await axios.post(`${ML_API_BASE}/predict/region`, {
       region,
       lat,
@@ -106,7 +112,7 @@ router.post('/region', auth, async (req, res) => {
       userId: req.user.id,
       method: 'region',
       inputData: {
-        region,
+        region: response.data.region || region,
         coordinates: lat && lng ? [lat, lng] : undefined,
         weatherData: response.data.weather_data
       },
@@ -117,10 +123,21 @@ router.post('/region', auth, async (req, res) => {
     
     res.json(recommendation);
   } catch (error) {
-    console.error('Error getting region-based recommendation:', error);
-    res.status(500).json({ message: 'Server error' });
+    console.error('Error getting region-based recommendation:', error.response?.data || error.message);
+    
+    // Provide better error messages
+    if (error.response?.status === 400) {
+      res.status(400).json({ message: error.response.data.detail || 'Invalid input' });
+    } else if (error.response?.status === 500) {
+      res.status(500).json({ message: 'ML service error: ' + (error.response.data.detail || 'Internal error') });
+    } else if (error.code === 'ECONNREFUSED') {
+      res.status(503).json({ message: 'ML service unavailable' });
+    } else {
+      res.status(500).json({ message: 'Server error' });
+    }
   }
 });
+
 
 // Update recommendation success status
 router.put('/:id/feedback', auth, async (req, res) => {

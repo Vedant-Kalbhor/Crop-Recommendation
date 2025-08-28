@@ -157,8 +157,11 @@ async def predict_soil_image(file: UploadFile = File(...)):
         logger.error(f"Error in soil image prediction: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.post("/predict/region")
-async def predict_region(region: str, lat: float = None, lon: float = None):
+@app.post("/predict/region")#Only for Weather Data not for Crop Recommendation
+async def predict_region(region_data: dict):
+    region = region_data.get('region')
+    lat = region_data.get('lat')
+    lon = region_data.get('lon')
     try:
         if not models_loaded:
             raise HTTPException(status_code=503, detail="Models not loaded")

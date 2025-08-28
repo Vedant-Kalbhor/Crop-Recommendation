@@ -41,7 +41,7 @@ const register = async (req, res) => {
       username,
       email,
       password: hashedPassword,
-      region: region || ''
+      region: region || 'north'
     };
     
     // Add location if provided
