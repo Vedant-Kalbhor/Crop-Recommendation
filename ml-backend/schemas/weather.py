@@ -12,7 +12,7 @@ class WeatherData(BaseModel):
     timestamp: Optional[datetime] = Field(None, description="Weather data timestamp")
     
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "temperature": 25.0,
                 "humidity": 60.0,

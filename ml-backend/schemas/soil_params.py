@@ -20,7 +20,7 @@ class SoilParams(BaseModel):
             raise ValueError('All soil parameters must be numeric')
     
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "N": 50.0,
                 "P": 40.0,

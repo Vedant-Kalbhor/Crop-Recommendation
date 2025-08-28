@@ -1,8 +1,9 @@
 import axios from 'axios';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
+const ML_API_URL = process.env.REACT_APP_ML_API_URL || 'http://localhost:8000';
 
-// Create axios instance
+// Create separate instances
 const api = axios.create({
   baseURL: API_URL,
   headers: {
@@ -10,7 +11,14 @@ const api = axios.create({
   }
 });
 
-// Add token to requests
+const mlApi = axios.create({
+  baseURL: ML_API_URL,
+  headers: {
+    'Content-Type': 'application/json'
+  }
+});
+
+// Add token only to the main API instance (Node.js backend)
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('token');
@@ -24,7 +32,7 @@ api.interceptors.request.use(
   }
 );
 
-// Handle response errors
+// Handle response errors only for main API
 api.interceptors.response.use(
   (response) => response,
   (error) => {
@@ -65,3 +73,4 @@ export const authAPI = {
 };
 
 export default api;
+export { mlApi }; // Export the ML API instance

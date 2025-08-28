@@ -7,7 +7,7 @@ class RecommendationItem(BaseModel):
     reason: str = Field(..., description="Reason for recommendation")
     
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "crop": "Wheat",
                 "confidence": 0.95,
@@ -24,7 +24,7 @@ class RecommendationResponse(BaseModel):
     weather_data: Optional[Dict[str, float]] = Field(None, description="Weather data used for prediction")
     
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "recommendations": [
                     {
