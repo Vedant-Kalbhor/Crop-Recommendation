@@ -501,10 +501,10 @@ CropSchema.statics.findByRegion = function(region, suitability = 'good') {
 };
 
 // Static method to find crops by soil type
-CropSchema.statics.findBySoilType = function(soilType) {
+CropSchema.statics.findBysoil_type = function(soil_type) {
   return this.find({
     $or: [
-      { 'idealConditions.soil.type': soilType },
+      { 'idealConditions.soil.type': soil_type },
       { 'idealConditions.soil.type': 'any' }
     ],
     isActive: true

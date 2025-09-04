@@ -2,10 +2,10 @@ import numpy as np
 import pandas as pd
 import joblib
 import tensorflow as tf
-from typing import List, Dict, Any
 import os
 import logging
 from dotenv import load_dotenv
+from typing import List, Dict, Any
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -14,52 +14,50 @@ logger = logging.getLogger(__name__)
 # Load environment variables
 load_dotenv()
 
-MODEL_PATH = os.getenv("MODEL_PATH", "saved_models")
-DATA_PATH = os.getenv("DATA_PATH", "data")
+MODEL_PATH = os.getenv("MODEL_PATH", "ml-backend/saved_models")
+DATA_PATH = os.getenv("DATA_PATH", "ml-backend/data")
 REGION_DATA = os.getenv("REGION_DATA", "region_crop_dataset.csv")
 
 class PredictionService:
     def __init__(self):
         self.rf_model = None
         self.cnn_model = None
-        self.crop_label_encoder = None  # Changed from label_encoder
-        self.region_label_encoder = None  # For region data if needed
+        self.crop_label_encoder = None
         self.region_crop_data = None
         self.models_loaded = False
         self.feature_names = ['N', 'P', 'K', 'temperature', 'humidity', 'ph', 'rainfall']
+
+        # ✅ Currently only 4 classes (expand later to 8)
+        self.soil_classes = [
+            'Alluvial_Soil',
+            'Black_Soil',
+            'Clay_Soil',
+            'Red_Soil'
+        ]
 
     def load_models(self):
         """Load all models and data during startup"""
         try:
             rf_model_path = os.path.join(MODEL_PATH, "random_forest_model.pkl")
-            cnn_model_path = os.path.join(MODEL_PATH, "soil_cnn_model.h5")
-            crop_encoder_path = os.path.join(MODEL_PATH, "crop_label_encoder.pkl")  # Only this one
+            cnn_model_path = os.path.join(MODEL_PATH, "cnn_soil_model.h5")
+            crop_encoder_path = os.path.join(MODEL_PATH, "crop_label_encoder.pkl")
             region_data_path = os.path.join(DATA_PATH, REGION_DATA)
 
             logger.info("Loading models...")
-            
-            # Load Random Forest model and crop label encoder
-            self.rf_model = joblib.load(rf_model_path)
-            logger.info(f"Random Forest model loaded from {rf_model_path}")
-            
-            self.crop_label_encoder = joblib.load(crop_encoder_path)
-            logger.info(f"Crop label encoder loaded from {crop_encoder_path}")
-            logger.info(f"Available crop classes: {self.crop_label_encoder.classes_}")
 
-            # Load CNN model
+            self.rf_model = joblib.load(rf_model_path)
+            self.crop_label_encoder = joblib.load(crop_encoder_path)
+
             self.cnn_model = tf.keras.models.load_model(cnn_model_path)
             logger.info(f"CNN model loaded from {cnn_model_path}")
 
-            # Load region data (no encoder needed for region prediction)
             if os.path.exists(region_data_path):
                 self.region_crop_data = pd.read_csv(region_data_path)
-                logger.info(f"Region crop dataset loaded from {region_data_path}")
             else:
-                logger.warning(f"Region crop dataset not found at {region_data_path}")
                 self.region_crop_data = pd.DataFrame()
 
             self.models_loaded = True
-            logger.info("✅ All models and data loaded successfully")
+            logger.info("✅ All models loaded successfully")
 
         except Exception as e:
             logger.error(f"❌ Error loading models: {e}")
@@ -74,58 +72,43 @@ class PredictionService:
         """Predict crop from soil parameters using Random Forest"""
         try:
             self._check_models_loaded()
-            
-            # Ensure all required features are present and in correct order
+
             input_data = []
-            
+            default_values = {
+                'N': 50.0, 'P': 50.0, 'K': 50.0,
+                'temperature': 25.0, 'humidity': 60.0,
+                'ph': 6.5, 'rainfall': 100.0
+            }
+
             for feature in self.feature_names:
-                value = soil_params.get(feature)
-                if value is None or value == '':
-                    # Use default values
-                    default_values = {
-                        'N': 50.0, 'P': 50.0, 'K': 50.0,
-                        'temperature': 25.0, 'humidity': 60.0,
-                        'ph': 6.5, 'rainfall': 100.0
-                    }
-                    value = default_values.get(feature, 0.0)
-                
+                value = soil_params.get(feature, default_values[feature])
                 try:
                     input_data.append(float(value))
                 except (ValueError, TypeError):
-                    default_values = {
-                        'N': 50.0, 'P': 50.0, 'K': 50.0,
-                        'temperature': 25.0, 'humidity': 60.0,
-                        'ph': 6.5, 'rainfall': 100.0
-                    }
-                    input_data.append(default_values.get(feature, 0.0))
+                    input_data.append(default_values[feature])
 
-            # Prepare input data as 2D array
             input_array = np.array([input_data])
-            
-            # Create DataFrame with correct feature names and order
             input_df = pd.DataFrame(input_array, columns=self.feature_names)
             logger.info(f"Input features: {dict(zip(self.feature_names, input_data))}")
 
-            # Make prediction
             prediction = self.rf_model.predict(input_df)
             probabilities = self.rf_model.predict_proba(input_df)[0]
 
-            # Decode prediction using CROP label encoder
             crop_name = self.crop_label_encoder.inverse_transform(prediction)[0]
             confidence = max(probabilities)
 
-            # Get top 5 recommendations
             top_indices = np.argsort(probabilities)[-5:][::-1]
             top_crops = self.crop_label_encoder.inverse_transform(top_indices)
             top_confidences = probabilities[top_indices]
 
-            recommendations = []
-            for crop, conf in zip(top_crops, top_confidences):
-                recommendations.append({
+            recommendations = [
+                {
                     "crop": crop,
                     "confidence": float(conf),
                     "reason": f"High compatibility with soil parameters (confidence: {conf:.2f})"
-                })
+                }
+                for crop, conf in zip(top_crops, top_confidences)
+            ]
 
             return {
                 "recommendations": recommendations,
@@ -137,39 +120,34 @@ class PredictionService:
             logger.error(f"Error in soil params prediction: {str(e)}")
             raise
 
-    # ... rest of the methods remain the same
-
     def predict_from_soil_image(self, image_array: np.ndarray) -> Dict[str, Any]:
-        self._check_models_loaded()
+        """Predict soil type and crops from soil image using CNN"""
         try:
-            # Preprocess image if needed (resize, normalize, etc.)
-            if len(image_array.shape) == 3:
-                image_array = np.expand_dims(image_array, axis=0)
-            
-            prediction = self.cnn_model.predict(image_array)
-            predicted_class = np.argmax(prediction, axis=1)[0]
-            confidence = prediction[0][predicted_class]
+            if self.cnn_model is None:
+                return self._fallback_soil_prediction()
 
-            soil_types = ['clay', 'sandy', 'loamy', 'silty', 'peaty', 'chalky']
-            soil_type = soil_types[predicted_class]
+            prediction = self.cnn_model.predict(image_array)
+            predicted_class_index = np.argmax(prediction, axis=1)[0]
+            confidence = float(prediction[0][predicted_class_index])
+
+            soil_type = self.soil_classes[predicted_class_index]
 
             soil_crop_mapping = {
-                'clay': ['Rice', 'Wheat', 'Cabbage', 'Broccoli', 'Brussels Sprouts'],
-                'sandy': ['Carrot', 'Potato', 'Lettuce', 'Strawberry', 'Radish'],
-                'loamy': ['Tomato', 'Corn', 'Soybean', 'Cotton', 'Pepper'],
-                'silty': ['Wheat', 'Oats', 'Sugar Beet', 'Barley', 'Cabbage'],
-                'peaty': ['Potato', 'Onion', 'Carrot', 'Lettuce', 'Celery'],
-                'chalky': ['Spinach', 'Beets', 'Sweet Corn', 'Cabbage', 'Lilac']
+                'Alluvial_Soil': ['Rice', 'Wheat', 'Sugarcane', 'Maize', 'Cotton'],
+                'Black_Soil': ['Cotton', 'Soybean', 'Citrus', 'Sunflower', 'Groundnut'],
+                'Clay_Soil': ['Rice', 'Wheat', 'Cabbage', 'Broccoli'],
+                'Red_Soil': ['Millets', 'Pulses', 'Groundnut', 'Cotton']
             }
 
             recommended_crops = soil_crop_mapping.get(soil_type, [])
-            recommendations = []
-            for crop in recommended_crops[:3]:
-                recommendations.append({
+            recommendations = [
+                {
                     "crop": crop,
-                    "confidence": float(confidence),
+                    "confidence": confidence,
                     "reason": f"Thrives in {soil_type} soil conditions"
-                })
+                }
+                for crop in recommended_crops[:3]
+            ]
 
             return {
                 "recommendations": recommendations,
@@ -179,12 +157,22 @@ class PredictionService:
 
         except Exception as e:
             logger.error(f"Error in soil image prediction: {str(e)}")
-            raise
+            return self._fallback_soil_prediction()
+
+    def _fallback_soil_prediction(self) -> Dict[str, Any]:
+        return {
+            "recommendations": [
+                {"crop": "Rice", "confidence": 0.6, "reason": "General fallback crop"},
+                {"crop": "Wheat", "confidence": 0.5, "reason": "General fallback crop"},
+                {"crop": "Sugarcane", "confidence": 0.4, "reason": "General fallback crop"}
+            ],
+            "method": "soil_image",
+            "soil_type": "unknown"
+        }
 
     def predict_from_region(self, region: str, weather_data: Dict[str, float]) -> Dict[str, Any]:
         self._check_models_loaded()
         try:
-            # Convert weather data values to float
             weather_data_float = {}
             for key, value in weather_data.items():
                 try:
@@ -193,12 +181,10 @@ class PredictionService:
                     weather_data_float[key] = 0.0
 
             suitable_crops = []
-            
             if not self.region_crop_data.empty:
                 region_crops = self.region_crop_data[
                     self.region_crop_data['region'].str.lower() == region.lower()
                 ]
-
                 if not region_crops.empty:
                     suitable_crops = region_crops['crops'].iloc[0].split(',')
                 else:
@@ -206,13 +192,14 @@ class PredictionService:
             else:
                 suitable_crops = self._filter_crops_by_weather(weather_data_float)
 
-            recommendations = []
-            for crop in suitable_crops[:3]:
-                recommendations.append({
+            recommendations = [
+                {
                     "crop": crop.strip(),
                     "confidence": 0.8,
                     "reason": f"Commonly grown in {region} region with current weather conditions"
-                })
+                }
+                for crop in suitable_crops[:3]
+            ]
 
             return {
                 "recommendations": recommendations,

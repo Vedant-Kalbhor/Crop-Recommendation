@@ -1,7 +1,6 @@
 import numpy as np
-from PIL import Image, ImageOps
+from PIL import Image
 import io
-from typing import Optional
 import logging
 
 logger = logging.getLogger(__name__)
@@ -11,37 +10,47 @@ class ImageProcessingService:
         self.target_size = target_size
     
     async def process_image(self, image_data: bytes) -> np.ndarray:
+        """Process uploaded image for CNN prediction"""
+        try:
+            image = Image.open(io.BytesIO(image_data)).convert("RGB")
+            image = image.resize(self.target_size)
+
+            image_array = np.array(image).astype("float32") / 255.0
+            image_array = np.expand_dims(image_array, axis=0)
+
+            return image_array
+        except Exception as e:
+            logger.error(f"Error processing image: {str(e)}")
+            raise
+
         """Process uploaded image for model prediction"""
         try:
             # Open image from bytes
             image = Image.open(io.BytesIO(image_data))
+            print(f"Original image mode: {image.mode}, size: {image.size}")
             
             # Convert to RGB if necessary
             if image.mode != 'RGB':
+                print(f"Converting image from {image.mode} to RGB")
                 image = image.convert('RGB')
             
-            # Resize image
+            # Resize image to target size
             image = image.resize(self.target_size)
+            print(f"Resized image size: {image.size}")
             
-            # Apply preprocessing
-            image = self._preprocess_image(image)
-            
-            # Convert to numpy array
+            # Convert to numpy array and normalize
             image_array = np.array(image) / 255.0
+            print(f"Image array shape: {image_array.shape}, range: [{image_array.min()}, {image_array.max()}]")
+            
+            # Add batch dimension
             image_array = np.expand_dims(image_array, axis=0)
+            print(f"Final array shape with batch dimension: {image_array.shape}")
             
             return image_array
             
         except Exception as e:
             logger.error(f"Error processing image: {str(e)}")
             raise
-    
-    def _preprocess_image(self, image: Image.Image) -> Image.Image:
-        """Apply preprocessing to the image"""
-        # Normalize and enhance image
-        image = ImageOps.exif_transpose(image)  # Handle EXIF orientation
-        image = ImageOps.autocontrast(image)    # Enhance contrast
-        return image
     
     def validate_image(self, image_data: bytes, max_size: int = 5 * 1024 * 1024) -> bool:
         """Validate image before processing"""

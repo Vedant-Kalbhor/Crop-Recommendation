@@ -2,8 +2,14 @@ const express = require('express');
 const axios = require('axios');
 const auth = require('../middleware/auth');
 const Recommendation = require('../models/Recommendation');
+const multer = require('multer');
+const FormData = require('form-data');
 
 const router = express.Router();
+
+const storage = multer.memoryStorage();
+const upload = multer({ storage });
+
 
 // ML API base URL
 const ML_API_BASE = process.env.ML_API_URL || 'http://localhost:8000';
@@ -49,47 +55,80 @@ router.post('/soil-params', auth, async (req, res) => {
   }
 });
 
-// Soil image recommendation
-router.post('/soil-image', auth, async (req, res) => {
+// Soil image recommendation route
+router.post('/soil-image', auth, upload.single('image'), async (req, res) => {
   try {
-    // This would typically involve file upload handling
-    // For now, we'll assume the image is processed on the frontend
-    // and we're just receiving the prediction result
+    if (!req.file) {
+      return res.status(400).json({ 
+        message: 'No image file uploaded',
+        recommendations: [] // Always include recommendations array
+      });
+    }
     
-    const { imageData, soilType } = req.body;
+    console.log('Received image file:', req.file.originalname);
     
-    // In a real implementation, you would:
-    // 1. Upload image to cloud storage
-    // 2. Send image URL to ML API
-    // 3. Process the response
-    
-    // For demo purposes, we'll simulate this
-    const response = await axios.post(`${ML_API_BASE}/predict/soil-image`, {
-      image: imageData // This would be a file in real implementation
-    }, {
-      headers: {
-        'Content-Type': 'multipart/form-data'
-      }
+    // Create FormData to forward to ML API
+    const formData = new FormData();
+    formData.append('file', req.file.buffer, {
+      filename: req.file.originalname,
+      contentType: req.file.mimetype
     });
+    
+    console.log('Forwarding to ML API...');
+    
+    // Call ML API
+    const response = await axios.post(`${ML_API_BASE}/predict/soil-image`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+        ...formData.getHeaders()
+      },
+      timeout: 30000 // 30 second timeout
+    });
+    
+    console.log('ML API response:', response.data);
+    
+    // Ensure proper response structure
+    const safeResponse = {
+      recommendations: Array.isArray(response.data.recommendations) 
+        ? response.data.recommendations 
+        : [],
+      soil_type: response.data.soil_type || 'unknown',
+      method: response.data.method || 'soil_image',
+      // Include any other fields that might be useful
+      ...response.data
+    };
     
     // Save recommendation to database
     const recommendation = new Recommendation({
       userId: req.user.id,
       method: 'soil_image',
-      inputData: { imageUrl: 'uploaded-image-url', soilType },
-      recommendations: response.data.recommendations
+      inputData: { 
+        imageUrl: `uploaded-${Date.now()}-${req.file.originalname}`,
+        soil_type: safeResponse.soil_type
+      },
+      recommendations: safeResponse.recommendations
     });
     
     await recommendation.save();
     
-    res.json(recommendation);
+    // Send response to client
+    res.json(safeResponse);
+    
   } catch (error) {
-    console.error('Error getting soil image recommendation:', error);
-    res.status(500).json({ message: 'Server error' });
+    console.error('Error in soil image recommendation:', error.message);
+    console.error('Error details:', error.response?.data || error.stack);
+    
+    // Send proper error response with expected structure
+    res.status(500).json({ 
+      message: 'Error analyzing soil image',
+      error: error.message,
+      recommendations: [], // Always include recommendations array
+      soil_type: 'unknown'
+    });
   }
 });
 
-// Region-based recommendation
+
 // Region-based recommendation
 router.post('/region', auth, async (req, res) => {
   try {

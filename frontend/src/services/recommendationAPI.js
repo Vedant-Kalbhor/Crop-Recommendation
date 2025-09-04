@@ -2,27 +2,33 @@ import api, { mlApi } from './authAPI';
 
 export const recommendationAPI = {
   getHistory: () => {
-    return api.get('/recommendations/history'); // Uses main API (with auth)
+    return api.get('/recommendations/history'); 
   },
 
   soilParams: (data) => {
-    return mlApi.post('/predict/soil-params', data); // Uses ML API (no auth)
+    return mlApi.post('/predict/soil-params', data);
   },
 
-  soilImage: (formData) => {
-    return mlApi.post('/predict/soil-image', formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data'
-      }
-    }); // Uses ML API (no auth)
-  },
+  soilImage: async (formData) => {
+    try {
+      const response = await api.post('/recommendations/soil-image', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      });
+      return response;
+    } catch (error) {
+      console.error('Soil image upload error:', error);
+      throw error;
+    }
+  },   // ✅ added missing comma
 
   regionAnalysis: (location) => {
-    return mlApi.post('/predict/region', location); // Uses ML API (no auth)
+    return mlApi.post('/predict/region', location);
   },
 
   updateFeedback: (id, feedback) => {
-    return api.put(`/recommendations/${id}/feedback`, feedback); // Uses main API (with auth)
+    return api.put(`/recommendations/${id}/feedback`, feedback);
   }
 };
 

@@ -53,13 +53,13 @@ def train_random_forest_model():
         # Save both model and label encoder
         os.makedirs(os.path.join('ml-backend', 'saved_models'), exist_ok=True)
         model_path = os.path.join('ml-backend', 'saved_models', 'random_forest_model.pkl')
-        encoder_path = os.path.join('ml-backend', 'saved_models', 'crop_label_encoder.pkl')
+        #encoder_path = os.path.join('ml-backend', 'saved_models', 'crop_label_encoder.pkl')
         
         joblib.dump(model, model_path)
-        joblib.dump(label_encoder, encoder_path)
+        #joblib.dump(label_encoder, encoder_path)
 
         print(f"Model saved to {model_path}")
-        print(f"Label encoder saved to {encoder_path}")
+        #print(f"Label encoder saved to {encoder_path}")
 
         return model, label_encoder, accuracy
 

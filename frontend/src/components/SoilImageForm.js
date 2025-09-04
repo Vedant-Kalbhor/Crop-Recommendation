@@ -25,6 +25,7 @@ const SoilImageForm = () => {
 
     if (validationError) {
       setError(validationError);
+      handleRemoveFile(); // Clear any previous selection
       return;
     }
 
@@ -68,6 +69,7 @@ const SoilImageForm = () => {
     setSelectedFile(null);
     setPreviewUrl('');
     setResult(null);
+    setError(''); // Clear any errors
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
@@ -87,7 +89,7 @@ const SoilImageForm = () => {
 
     try {
       const formData = new FormData();
-      formData.append('image', selectedFile);
+      formData.append('file', selectedFile); // Correct field name
 
       const response = await recommendationAPI.soilImage(formData, {
         onUploadProgress: (progressEvent) => {
@@ -103,15 +105,31 @@ const SoilImageForm = () => {
       
       // Clear file after successful upload
       setTimeout(() => {
+        handleRemoveFile(); // Use the cleaner function
         setUploadProgress(0);
       }, 1000);
 
     } catch (err) {
-      setError(err.response?.data?.message || ERROR_MESSAGES.SERVER_ERROR);
+      setError(err.response?.data?.detail || ERROR_MESSAGES.SERVER_ERROR);
       setUploadProgress(0);
     } finally {
       setLoading(false);
     }
+  };
+
+  const getsoil_typeDescription = (soil_type) => {
+    const descriptions = {
+      alluvial: 'Alluvial soil is highly fertile and ideal for crops like rice, wheat, and sugarcane. It is found in river basins and flood plains.',
+      black: 'Black soil is rich in nutrients like magnesium, lime, iron, and aluminum. It is highly moisture-retentive, making it excellent for cotton and soybeans.',
+      clay: 'Clay soil is heavy and compact, with excellent water retention. It is rich in nutrients and is well-suited for crops that need constant moisture, such as rice and some vegetables.',
+      red: 'Red soil is poor in nitrogen, phosphorus, and humus but rich in iron oxides. It is well-drained and ideal for crops like millets, pulses, and groundnuts.',
+      sandy: 'Sandy soil drains quickly and is easy to work with. It warms up fast in spring but requires frequent watering and fertilization.',
+      loamy: 'Loamy soil is ideal for most plants. It has good drainage, retains moisture well, and is rich in nutrients. Considered the best soil type for gardening.',
+      silty: 'Silty soil is smooth and retains moisture well. It is fertile but can become compacted easily. Benefits from organic matter to improve structure.',
+      peaty: 'Peaty soil is acidic and retains a lot of moisture. It is rich in organic matter but may require drainage improvement and lime to reduce acidity.',
+      chalky: 'Chalky soil is alkaline and free-draining. It is low in nutrients and may require regular fertilization. Suitable for plants that prefer alkaline conditions.'
+    };
+    return descriptions[soil_type] || 'This soil type has specific characteristics that make it suitable for certain crops.';
   };
 
   const validateImageFile = (file, allowedTypes, maxSize) => {
@@ -218,7 +236,7 @@ const SoilImageForm = () => {
           <div className="soil-type-result">
             <h4>Detected Soil Type:</h4>
             <div className="soil-type-badge">
-              {result.soilType}
+              {result.soil_type}
             </div>
           </div>
 
@@ -235,7 +253,7 @@ const SoilImageForm = () => {
                   </div>
                   <p className="recommendation-reason">{rec.reason}</p>
                   <div className="crop-properties">
-                    <span className="property-tag">Ideal for {result.soilType} soil</span>
+                    <span className="property-tag">Ideal for {result.soil_type} soil</span>
                   </div>
                 </div>
               ))}
@@ -243,29 +261,15 @@ const SoilImageForm = () => {
           </div>
 
           <div className="soil-type-info">
-            <h4>About {result.soilType} Soil:</h4>
+            <h4>About {result.soil_type} Soil:</h4>
             <p>
-              {getSoilTypeDescription(result.soilType)}
+              {getsoil_typeDescription(result.soil_type)}
             </p>
           </div>
         </div>
       )}
     </div>
   );
-};
-
-// Helper function to get soil type description
-const getSoilTypeDescription = (soilType) => {
-  const descriptions = {
-    clay: 'Clay soil is heavy and retains water well. It is rich in nutrients but can be difficult to work with when wet. Improves with organic matter.',
-    sandy: 'Sandy soil drains quickly and is easy to work with. It warms up fast in spring but requires frequent watering and fertilization.',
-    loamy: 'Loamy soil is ideal for most plants. It has good drainage, retains moisture well, and is rich in nutrients. Considered the best soil type for gardening.',
-    silty: 'Silty soil is smooth and retains moisture well. It is fertile but can become compacted easily. Benefits from organic matter to improve structure.',
-    peaty: 'Peaty soil is acidic and retains a lot of moisture. It is rich in organic matter but may require drainage improvement and lime to reduce acidity.',
-    chalky: 'Chalky soil is alkaline and free-draining. It is low in nutrients and may require regular fertilization. Suitable for plants that prefer alkaline conditions.'
-  };
-
-  return descriptions[soilType] || 'This soil type has specific characteristics that make it suitable for certain crops.';
 };
 
 export default SoilImageForm;

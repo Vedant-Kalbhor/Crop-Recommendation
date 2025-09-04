@@ -1,19 +1,18 @@
-const mongoose=require("mongoose");
-const { create } = require("./User");
+const mongoose = require("mongoose");
 
-const RecommendationSchema=new mongoose.Schema({
-    userId:{
-        type:mongoose.Schema.Types.ObjectId,
-        ref:'User',
-        required:true
-    },
-    method:{
-        type:String,
-        enum:['soil_params','soil_image','region'],
-        required:true
-    },
-    inputData:{
-        // For soil parameters
+const RecommendationSchema = new mongoose.Schema({
+  userId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: true
+  },
+  method: {
+    type: String,
+    enum: ['soil_params', 'soil_image', 'region'],
+    required: true
+  },
+  inputData: {
+    // Soil parameters
     N: Number,
     P: Number,
     K: Number,
@@ -21,12 +20,12 @@ const RecommendationSchema=new mongoose.Schema({
     humidity: Number,
     rainfall: Number,
     ph: Number,
-    
-    // For image analysis
+
+    // ✅ Use snake_case to match ML API
     imageUrl: String,
-    soilType: String,
-    
-    // For region analysis
+    soil_type: String,
+
+    // Region analysis
     region: String,
     coordinates: [Number],
     weatherData: {
@@ -34,17 +33,17 @@ const RecommendationSchema=new mongoose.Schema({
       humidity: Number,
       rainfall: Number
     }
-    },
-    successStatus:{
-        type:String,
-        enum:['pending','success','failure'],
-        default:'pending'
-    },
-    feedback:String,
-    createAt:{
-        type:Date,
-        default:Date.now
-    }
+  },
+  successStatus: {
+    type: String,
+    enum: ['pending', 'success', 'failure'],
+    default: 'pending'
+  },
+  feedback: String,
+  createdAt: {
+    type: Date,
+    default: Date.now
+  }
 });
 
-module.exports= mongoose.model('Recommendation',RecommendationSchema);
+module.exports = mongoose.model('Recommendation', RecommendationSchema);

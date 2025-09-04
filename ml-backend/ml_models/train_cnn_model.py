@@ -5,12 +5,10 @@ from tensorflow.keras.preprocessing.image import ImageDataGenerator
 from tensorflow.keras.applications import EfficientNetB0
 from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.callbacks import EarlyStopping, ReduceLROnPlateau
-import numpy as np
 import os
 
-def create_cnn_model(input_shape=(224, 224, 3), num_classes=6):
+def create_cnn_model(input_shape=(224, 224, 3), num_classes=4):
     """Create CNN model for soil classification"""
-    # Use EfficientNetB0 as base model
     base_model = EfficientNetB0(
         include_top=False,
         weights='imagenet',
@@ -18,10 +16,9 @@ def create_cnn_model(input_shape=(224, 224, 3), num_classes=6):
         pooling='avg'
     )
     
-    # Freeze base model layers
+    # Freeze base model
     base_model.trainable = False
     
-    # Add custom layers
     model = keras.Sequential([
         base_model,
         layers.Dropout(0.3),
@@ -36,65 +33,57 @@ def create_cnn_model(input_shape=(224, 224, 3), num_classes=6):
 def train_cnn_model():
     """Train CNN model for soil image classification"""
     try:
-        # Data directories
-        train_dir = os.path.join('data', 'soil_images', 'train')
-        val_dir = os.path.join('data', 'soil_images', 'validation')
-        
-        # Check if data exists
-        if not os.path.exists(train_dir):
-            print(f"Training directory not found: {train_dir}")
+        dataset_dir = os.path.join('ml-backend', 'data', 'CyAUG-Dataset')
+        if not os.path.exists(dataset_dir):
+            print(f"❌ Dataset directory not found: {dataset_dir}")
             return None
-        
-        # Data augmentation and preprocessing
-        train_datagen = ImageDataGenerator(
+
+        datagen = ImageDataGenerator(
             rescale=1./255,
             rotation_range=20,
             width_shift_range=0.2,
             height_shift_range=0.2,
             horizontal_flip=True,
             vertical_flip=True,
-            fill_mode='nearest'
+            fill_mode='nearest',
+            validation_split=0.2
         )
         
-        val_datagen = ImageDataGenerator(rescale=1./255)
-        
-        # Create data generators
-        train_generator = train_datagen.flow_from_directory(
-            train_dir,
+        train_generator = datagen.flow_from_directory(
+            dataset_dir,
             target_size=(224, 224),
             batch_size=32,
             class_mode='categorical',
+            subset='training',
             shuffle=True
         )
         
-        val_generator = val_datagen.flow_from_directory(
-            val_dir,
+        val_generator = datagen.flow_from_directory(
+            dataset_dir,
             target_size=(224, 224),
             batch_size=32,
             class_mode='categorical',
+            subset='validation',
             shuffle=False
         )
         
         print(f"Training classes: {train_generator.class_indices}")
         print(f"Validation classes: {val_generator.class_indices}")
+
+        NUM_CLASSES = 4  # ✅ Change to 8 later if dataset has 8 classes
+        model = create_cnn_model(num_classes=NUM_CLASSES)
         
-        # Create model
-        model = create_cnn_model(num_classes=len(train_generator.class_indices))
-        
-        # Compile model
         model.compile(
             optimizer=Adam(learning_rate=0.001),
             loss='categorical_crossentropy',
             metrics=['accuracy']
         )
         
-        # Callbacks
         callbacks = [
             EarlyStopping(patience=10, restore_best_weights=True),
             ReduceLROnPlateau(factor=0.2, patience=5)
         ]
         
-        # Train model
         history = model.fit(
             train_generator,
             epochs=50,
@@ -103,18 +92,15 @@ def train_cnn_model():
             verbose=1
         )
         
-        # Fine-tuning: Unfreeze base model
+        # Fine-tuning
         base_model = model.layers[0]
         base_model.trainable = True
-        
-        # Recompile with lower learning rate
         model.compile(
             optimizer=Adam(learning_rate=0.0001),
             loss='categorical_crossentropy',
             metrics=['accuracy']
         )
         
-        # Fine-tune
         history_fine = model.fit(
             train_generator,
             epochs=20,
@@ -123,21 +109,20 @@ def train_cnn_model():
             verbose=1
         )
         
-        # Evaluate model
         val_loss, val_accuracy = model.evaluate(val_generator)
-        print(f"Validation accuracy: {val_accuracy:.4f}")
+        print(f"✅ Validation accuracy: {val_accuracy:.4f}")
         
-        # Save model
-        os.makedirs('models', exist_ok=True)
-        model_path = os.path.join('models', 'cnn_soil_model.h5')
+        os.makedirs('ml-backend/saved_models', exist_ok=True)
+        model_path = os.path.join('ml-backend', 'saved_models', 'cnn_soil_model.h5')
         model.save(model_path)
         
-        print(f"Model saved to {model_path}")
-        
+        print(f"✅ Model saved to {model_path}")
         return model, val_accuracy
         
     except Exception as e:
-        print(f"Error training CNN model: {str(e)}")
+        print(f"❌ Error training CNN model: {str(e)}")
+        import traceback
+        traceback.print_exc()
         raise
 
 if __name__ == "__main__":
