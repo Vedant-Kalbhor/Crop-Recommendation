@@ -1,35 +1,25 @@
 import api, { mlApi } from './authAPI';
 
 export const recommendationAPI = {
-  getHistory: () => {
-    return api.get('/recommendations/history'); 
-  },
+  getHistory: () => api.get('/recommendations/history'),
 
-  soilParams: (data) => {
-    return mlApi.post('/predict/soil-params', data);
-  },
+  soilParams: (data) => mlApi.post('/predict/soil-params', data),
 
-  soilImage: async (formData) => {
-    try {
-      const response = await api.post('/recommendations/soil-image', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data'
-        }
-      });
-      return response;
-    } catch (error) {
-      console.error('Soil image upload error:', error);
-      throw error;
-    }
-  },   // ✅ added missing comma
+  soilImage: (formData) =>
+    api.post('/recommendations/soil-image', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }),
 
-  regionAnalysis: (location) => {
-    return mlApi.post('/predict/region', location);
-  },
+  regionAnalysis: ({ region, district }) =>
+    mlApi.post('/predict/region', { region, district }),
 
-  updateFeedback: (id, feedback) => {
-    return api.put(`/recommendations/${id}/feedback`, feedback);
-  }
+  getAvailableStates: () => mlApi.get('/available/states'),
+
+  getAvailableDistricts: (state) =>
+    mlApi.get(`/available/districts?state=${encodeURIComponent(state)}`),
+
+  updateFeedback: (id, feedback) =>
+    api.put(`/recommendations/${id}/feedback`, feedback),
 };
 
 export default recommendationAPI;

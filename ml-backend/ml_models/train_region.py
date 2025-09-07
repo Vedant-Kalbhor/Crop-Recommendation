@@ -1,58 +1,86 @@
 #!/usr/bin/env python3
 """
-Script to train and save the crop recommendation model
+Script to preprocess region–crop dataset and save summary stats + metadata
 """
+
 import os
 import sys
 import logging
+import pandas as pd
+import joblib
+from collections import defaultdict
 
-from crop_recommender import CropRecommender
-from data_processor import DataProcessor
+# Paths
+DATA_PATH = "ml-backend/data/India_Agriculture_Crop_Production.csv"
+SAVE_DIR = "ml-backend/saved_models"
 
+# Logging setup
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+# Ensure save directory exists
+os.makedirs(SAVE_DIR, exist_ok=True)
 
-def train_and_save_model(data_file, model_save_path):
-    """Train the crop recommendation model and save it"""
+
+def train_region_model():
+    """Load dataset, preprocess, and save region-level crop stats + metadata"""
     try:
-        logger.info(f"Loading and processing data from {data_file}...")
+        logger.info(f"📂 Loading dataset from {DATA_PATH}...")
+        df = pd.read_csv(DATA_PATH)
 
-        processor = DataProcessor(data_file)
-        df = processor.load_and_preprocess_data()
-        logger.info(f"Data processed successfully. {len(df)} records loaded.")
+        # Normalize column names (dataset versions differ)
+        df.columns = [c.strip().lower() for c in df.columns]
 
-        recommender = CropRecommender()
-        recommender.data_processor = processor
-        recommender.df = df
+        # Ensure required columns exist
+        required_cols = ["state", "district", "crop", "production"]
+        if not all(col in df.columns for col in required_cols):
+            raise ValueError(f"Dataset must have columns: {', '.join(required_cols)}")
 
-        logger.info("Precomputing crop statistics...")
-        recommender.crop_stats = recommender._precompute_crop_statistics()
+        # Clean data
+        df = df.dropna(subset=required_cols)
+        df["production"] = pd.to_numeric(df["production"], errors="coerce").fillna(0)
 
-        logger.info("Saving model...")
-        recommender.save_model(model_save_path)
+        logger.info(f"✅ Data cleaned. {len(df)} valid records remaining.")
 
-        logger.info(f"✅ Model successfully trained and saved to {model_save_path}")
+        # Build crop stats per state & district
+        region_crop_stats = defaultdict(lambda: defaultdict(int))
+        state_districts = defaultdict(set)
+
+        for _, row in df.iterrows():
+            state = str(row["state"]).strip()
+            district = str(row["district"]).strip()
+            crop = str(row["crop"]).strip()
+            prod = float(row["production"])
+
+            key_state = (state,)
+            key_district = (state, district)
+
+            region_crop_stats[key_state][crop] += prod
+            region_crop_stats[key_district][crop] += prod
+
+            state_districts[state].add(district)
+
+        # Save region crop stats
+        stats_path = os.path.join(SAVE_DIR, "region_crop_stats.joblib")
+        joblib.dump(dict(region_crop_stats), stats_path)
+
+        # Save metadata (states → districts)
+        metadata_path = os.path.join(SAVE_DIR, "region_metadata.joblib")
+        state_metadata = {state: sorted(list(districts)) for state, districts in state_districts.items()}
+        joblib.dump(state_metadata, metadata_path)
+
+        logger.info(f"🎉 Saved region_crop_stats.joblib and region_metadata.joblib in {SAVE_DIR}")
         return True
 
     except Exception as e:
-        logger.error(f"❌ Error training model: {str(e)}")
+        logger.error(f"❌ Error in training region model: {str(e)}")
         return False
 
 
 if __name__ == "__main__":
-    DATA_FILE = "ml-backend/data/India_Agriculture_Crop_Production.csv"
-    MODEL_PATH = "ml-backend/saved_models/crop_recommender_model.joblib"
-
-    if not os.path.exists(DATA_FILE):
-        logger.error(f"Data file {DATA_FILE} not found!")
+    if not os.path.exists(DATA_PATH):
+        logger.error(f"❌ Data file {DATA_PATH} not found!")
         sys.exit(1)
 
-    success = train_and_save_model(DATA_FILE, MODEL_PATH)
-
-    if success:
-        logger.info("Model training completed successfully!")
-        sys.exit(0)
-    else:
-        logger.error("Model training failed!")
-        sys.exit(1)
+    success = train_region_model()
+    sys.exit(0 if success else 1)

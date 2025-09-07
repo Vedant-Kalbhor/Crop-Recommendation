@@ -129,53 +129,64 @@ router.post('/soil-image', auth, upload.single('image'), async (req, res) => {
 });
 
 
+// routes/recommendations.js — replace the /region POST handler with this version
+
 // Region-based recommendation
 router.post('/region', auth, async (req, res) => {
   try {
-    const { region, lat, lng } = req.body;
-    
-    // Validate input
-    if (!region && (!lat || !lng)) {
-      return res.status(400).json({ message: 'Either region or coordinates are required' });
+    const { region, lat, lng, lon, district } = req.body;
+
+    // Validate input: require either region (state) or coordinates
+    if (!region && !(lat && (lng || lon))) {
+      return res.status(400).json({ message: 'Either region (state) or coordinates are required' });
     }
-    
-    // Call ML API with JSON body
-    const response = await axios.post(`${ML_API_BASE}/predict/region`, {
-      region,
-      lat,
-      lon: lng
-    });
-    
-    // Save recommendation to database
+
+    // Build payload for ML API. Prefer lat & lng; send lon too for compatibility
+    let payload = {};
+    if (lat && (lng || lon)) {
+      payload = { lat, lng: lng || lon, lon: lng || lon };
+    } else {
+      payload = { region };
+      if (district) payload.district = district;
+    }
+
+    // Call ML API
+    const response = await axios.post(`${ML_API_BASE}/predict/region`, payload);
+
+    // The ML API returns recommendations (or an error field)
+    const mlData = response.data || {};
+
+    // Save the recommendation to DB (store state/district separately for analytics)
     const recommendation = new Recommendation({
       userId: req.user.id,
       method: 'region',
       inputData: {
-        region: response.data.region || region,
-        coordinates: lat && lng ? [lat, lng] : undefined,
-        weatherData: response.data.weather_data
+        region: mlData.region || region,
+        state: mlData.region || region,
+        district: mlData.district || district,
+        coordinates: lat && (lng || lon) ? [parseFloat(lat), parseFloat(lng || lon)] : undefined,
+        weatherData: mlData.weather_data || {}
       },
-      recommendations: response.data.recommendations
+      recommendations: mlData.recommendations || []
     });
-    
+
     await recommendation.save();
-    
-    res.json(recommendation);
+
+    // return the ML response to client
+    return res.json(mlData);
+
   } catch (error) {
-    console.error('Error getting region-based recommendation:', error.response?.data || error.message);
-    
-    // Provide better error messages
+    console.error('Error getting region-based recommendation:', error.response?.data || error.message || error);
     if (error.response?.status === 400) {
-      res.status(400).json({ message: error.response.data.detail || 'Invalid input' });
-    } else if (error.response?.status === 500) {
-      res.status(500).json({ message: 'ML service error: ' + (error.response.data.detail || 'Internal error') });
+      return res.status(400).json({ message: error.response.data.detail || error.response.data || 'Invalid input' });
     } else if (error.code === 'ECONNREFUSED') {
-      res.status(503).json({ message: 'ML service unavailable' });
+      return res.status(503).json({ message: 'ML service unavailable' });
     } else {
-      res.status(500).json({ message: 'Server error' });
+      return res.status(500).json({ message: 'Server error' });
     }
   }
 });
+
 
 
 // Update recommendation success status

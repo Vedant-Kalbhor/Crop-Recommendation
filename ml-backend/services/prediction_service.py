@@ -7,6 +7,8 @@ import logging
 from dotenv import load_dotenv
 from typing import List, Dict, Any
 
+from services.data_processor import DataProcessor
+
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -15,15 +17,13 @@ logger = logging.getLogger(__name__)
 load_dotenv()
 
 MODEL_PATH = os.getenv("MODEL_PATH", "ml-backend/saved_models")
-DATA_PATH = os.getenv("DATA_PATH", "ml-backend/data")
-REGION_DATA = os.getenv("REGION_DATA", "region_crop_dataset.csv")
 
 class PredictionService:
     def __init__(self):
         self.rf_model = None
         self.cnn_model = None
         self.crop_label_encoder = None
-        self.region_crop_data = None
+        self.region_stats = None  # ✅ joblib-based stats
         self.models_loaded = False
         self.feature_names = ['N', 'P', 'K', 'temperature', 'humidity', 'ph', 'rainfall']
 
@@ -36,28 +36,49 @@ class PredictionService:
         ]
 
     def load_models(self):
-        """Load all models and data during startup"""
+        """Load all models and region–crop stats"""
         try:
             rf_model_path = os.path.join(MODEL_PATH, "random_forest_model.pkl")
             cnn_model_path = os.path.join(MODEL_PATH, "cnn_soil_model.h5")
             crop_encoder_path = os.path.join(MODEL_PATH, "crop_label_encoder.pkl")
-            region_data_path = os.path.join(DATA_PATH, REGION_DATA)
+            region_stats_path = os.path.join(MODEL_PATH, "region_crop_stats.joblib")
 
             logger.info("Loading models...")
 
-            self.rf_model = joblib.load(rf_model_path)
-            self.crop_label_encoder = joblib.load(crop_encoder_path)
-
-            self.cnn_model = tf.keras.models.load_model(cnn_model_path)
-            logger.info(f"CNN model loaded from {cnn_model_path}")
-
-            if os.path.exists(region_data_path):
-                self.region_crop_data = pd.read_csv(region_data_path)
+            # Random Forest
+            if os.path.exists(rf_model_path):
+                self.rf_model = joblib.load(rf_model_path)
+                logger.info("Random Forest model loaded")
             else:
-                self.region_crop_data = pd.DataFrame()
+                logger.warning(f"RF model not found at {rf_model_path}")
+
+            # Label Encoder
+            if os.path.exists(crop_encoder_path):
+                self.crop_label_encoder = joblib.load(crop_encoder_path)
+                logger.info("Crop label encoder loaded")
+            else:
+                logger.warning(f"Label encoder not found at {crop_encoder_path}")
+
+            # CNN
+            if os.path.exists(cnn_model_path):
+                self.cnn_model = tf.keras.models.load_model(cnn_model_path)
+                logger.info(f"CNN model loaded from {cnn_model_path}")
+            else:
+                logger.warning(f"CNN model not found at {cnn_model_path}")
+
+            # Region–Crop Stats
+            if os.path.exists(region_stats_path):
+                self.region_stats = joblib.load(region_stats_path)
+                if isinstance(self.region_stats, pd.DataFrame):
+                    logger.info(f"Region–crop stats loaded with {len(self.region_stats)} rows")
+                else:
+                    logger.error("Region stats file is invalid (not DataFrame)")
+                    self.region_stats = None
+            else:
+                logger.warning(f"Region stats not found at {region_stats_path}")
 
             self.models_loaded = True
-            logger.info("✅ All models loaded successfully")
+            logger.info("✅ All models and region mappings loaded successfully")
 
         except Exception as e:
             logger.error(f"❌ Error loading models: {e}")
@@ -68,8 +89,8 @@ class PredictionService:
         if not self.models_loaded:
             raise RuntimeError("Models not loaded. Please check model loading step.")
 
+    # ---------------- Soil Params ----------------
     def predict_from_soil_params(self, soil_params: Dict[str, Any]) -> Dict[str, Any]:
-        """Predict crop from soil parameters using Random Forest"""
         try:
             self._check_models_loaded()
 
@@ -95,8 +116,6 @@ class PredictionService:
             probabilities = self.rf_model.predict_proba(input_df)[0]
 
             crop_name = self.crop_label_encoder.inverse_transform(prediction)[0]
-            confidence = max(probabilities)
-
             top_indices = np.argsort(probabilities)[-5:][::-1]
             top_crops = self.crop_label_encoder.inverse_transform(top_indices)
             top_confidences = probabilities[top_indices]
@@ -120,8 +139,8 @@ class PredictionService:
             logger.error(f"Error in soil params prediction: {str(e)}")
             raise
 
+    # ---------------- Soil Image ----------------
     def predict_from_soil_image(self, image_array: np.ndarray) -> Dict[str, Any]:
-        """Predict soil type and crops from soil image using CNN"""
         try:
             if self.cnn_model is None:
                 return self._fallback_soil_prediction()
@@ -170,62 +189,50 @@ class PredictionService:
             "soil_type": "unknown"
         }
 
+    # ---------------- Region ----------------
     def predict_from_region(self, region: str, weather_data: Dict[str, float]) -> Dict[str, Any]:
         self._check_models_loaded()
         try:
-            weather_data_float = {}
-            for key, value in weather_data.items():
-                try:
-                    weather_data_float[key] = float(value)
-                except (ValueError, TypeError):
-                    weather_data_float[key] = 0.0
+            if self.region_stats is None:
+                raise RuntimeError("Region stats not loaded")
 
-            suitable_crops = []
-            if not self.region_crop_data.empty:
-                region_crops = self.region_crop_data[
-                    self.region_crop_data['region'].str.lower() == region.lower()
-                ]
-                if not region_crops.empty:
-                    suitable_crops = region_crops['crops'].iloc[0].split(',')
-                else:
-                    suitable_crops = self._filter_crops_by_weather(weather_data_float)
-            else:
-                suitable_crops = self._filter_crops_by_weather(weather_data_float)
+            df = self.region_stats
+            region_df = df[df["State"].str.lower() == region.lower()]
+
+            if region_df.empty:
+                return {
+                    "recommendations": [],
+                    "method": "region",
+                    "region": region,
+                    "weather_data": weather_data,
+                    "error": "Region not found in dataset"
+                }
+
+            # Rank crops by total production
+            top_crops = (
+                region_df.groupby("Crop")
+                .agg({"Area": "sum", "Production": "sum", "Yield": "mean"})
+                .reset_index()
+                .sort_values("Production", ascending=False)
+                .head(5)
+            )
 
             recommendations = [
                 {
-                    "crop": crop.strip(),
+                    "crop": row["Crop"],
                     "confidence": 0.8,
-                    "reason": f"Commonly grown in {region} region with current weather conditions"
+                    "reason": f"Top crop in {region} based on historical data (Production: {row['Production']:.0f} tonnes)"
                 }
-                for crop in suitable_crops[:3]
+                for _, row in top_crops.iterrows()
             ]
 
             return {
                 "recommendations": recommendations,
                 "method": "region",
                 "region": region,
-                "weather_data": weather_data_float
+                "weather_data": weather_data
             }
 
         except Exception as e:
             logger.error(f"Error in region prediction: {str(e)}")
             raise
-
-    def _filter_crops_by_weather(self, weather_data: Dict[str, float]) -> List[str]:
-        try:
-            temp = float(weather_data.get('temperature', 0))
-            rainfall = float(weather_data.get('rainfall', 0))
-
-            if temp > 28 and rainfall > 150:
-                return ['Rice', 'Sugarcane', 'Banana', 'Taro', 'Watermelon']
-            elif 22 <= temp <= 28 and 100 <= rainfall <= 150:
-                return ['Cotton', 'Maize', 'Soybean', 'Groundnut', 'Sunflower']
-            elif 15 <= temp <= 22 and 50 <= rainfall <= 100:
-                return ['Wheat', 'Barley', 'Oats', 'Potato', 'Peas']
-            elif temp < 15 and rainfall < 50:
-                return ['Millet', 'Sorghum', 'Chickpea', 'Lentil', 'Mustard']
-            else:
-                return ['Tomato', 'Onion', 'Chilli', 'Brinjal', 'Cucumber']
-        except (ValueError, TypeError):
-            return ['Tomato', 'Onion', 'Chilli', 'Brinjal', 'Cucumber']
