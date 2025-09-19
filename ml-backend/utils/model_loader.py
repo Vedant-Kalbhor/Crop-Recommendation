@@ -28,7 +28,8 @@ class ModelLoader:
                 logger.warning(f"⚠️ Random Forest model not found at {rf_model_path}")
 
             # ------------------- CNN model -------------------
-            cnn_model_path = os.path.join(model_path, "cnn_soil_model.h5")
+            #cnn_model_path = os.path.join(model_path, "cnn_soil_model.h5")
+            cnn_model_path = os.path.join(model_path, "pytorch_soil_model.pth")
             if os.path.exists(cnn_model_path):
                 self.cnn_model = tf.keras.models.load_model(cnn_model_path)
                 logger.info("✅ CNN model loaded successfully")

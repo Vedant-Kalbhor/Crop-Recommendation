@@ -1,5 +1,5 @@
 import React from "react";
-import RegionForm from "../components/RegionForm";  // ✅ import the component
+import RegionForm from "../components/RegionForm";  
 
 const RegionAnalysis = () => {
   return (
@@ -7,7 +7,7 @@ const RegionAnalysis = () => {
       <h2>Region-Based Crop Recommendation</h2>
       <p>Get crop recommendations based on your region using actual agricultural data.</p>
 
-      {/* ✅ Use the new dropdown-based form */}
+      
       <RegionForm />
     </div>
   );

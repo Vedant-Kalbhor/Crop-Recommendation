@@ -2,7 +2,9 @@
 import tensorflow as tf
 import numpy as np
 
-model_path="ml-backend/saved_models/cnn_soil_model.h5"
+#model_path="ml-backend/saved_models/cnn_soil_model.h5"
+model_path="ml-backend/saved_models/pytorch_soil_model.pth"
+
 
 def create_compatible_model(input_shape=(224, 224, 3), num_classes=4):
     """Create a CNN model that matches your expected architecture"""

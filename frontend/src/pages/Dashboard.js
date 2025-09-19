@@ -91,7 +91,7 @@ const Dashboard = () => {
           <div className="history-list">
             {history.map(item => (
               <div key={item._id} className="history-item">
-                <h4>{new Date(item.createdAt).toLocaleDateString()}</h4>
+                <h4>{new Date(item.createdAt || item.createAt).toLocaleDateString()}</h4>
                 <p>Method: {item.method}</p>
                 <p>Status: {item.successStatus}</p>
                 <div className="recommended-crops">
