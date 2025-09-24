@@ -311,39 +311,375 @@
     
 #     # Train the model
 #     train_cnn_model()
-
+#ABOVE IS TF BASED INVALID NOW
 #-----------
+
+#BELOW IS MAIN
+
+
+# import torch
+# import torch.nn as nn
+# import torch.optim as optim
+# from torch.utils.data import DataLoader, Dataset
+# from torchvision import transforms, models
+# from torch.optim.lr_scheduler import ReduceLROnPlateau
+# import os
+# from PIL import Image
+# import numpy as np
+# import matplotlib.pyplot as plt
+# from sklearn.metrics import accuracy_score
+# import time
+
+# # Configure GPU for optimal performance
+# def configure_gpu():
+#     """Configure GPU settings for PyTorch"""
+#     if torch.cuda.is_available():
+#         device = torch.device("cuda")
+#         print(f"✅ GPU detected: {torch.cuda.get_device_name(0)}")
+#         print(f"✅ GPU Memory: {torch.cuda.get_device_properties(0).total_memory / 1024**3:.2f} GB")
+        
+#         # Set CuDNN benchmark for better performance
+#         torch.backends.cudnn.benchmark = True
+#         return device
+#     else:
+#         device = torch.device("cpu")
+#         print("⚠️  No GPU detected. Using CPU instead.")
+#         return device
+
+# # Custom dataset class
+# class SoilDataset(Dataset):
+#     def __init__(self, root_dir, transform=None):
+#         self.root_dir = root_dir
+#         self.transform = transform
+#         self.classes = sorted(os.listdir(root_dir))
+#         self.class_to_idx = {cls_name: i for i, cls_name in enumerate(self.classes)}
+#         self.images = []
+        
+#         # Load image paths and labels
+#         for cls_name in self.classes:
+#             cls_dir = os.path.join(root_dir, cls_name)
+#             if os.path.isdir(cls_dir):
+#                 for img_name in os.listdir(cls_dir):
+#                     if img_name.lower().endswith(('.png', '.jpg', '.jpeg')):
+#                         self.images.append((os.path.join(cls_dir, img_name), self.class_to_idx[cls_name]))
+    
+#     def __len__(self):
+#         return len(self.images)
+    
+#     def __getitem__(self, idx):
+#         img_path, label = self.images[idx]
+        
+#         # Load image
+#         image = Image.open(img_path).convert('RGB')  # Ensure 3 channels
+        
+#         if self.transform:
+#             image = self.transform(image)
+        
+#         return image, label
+
+# # Create CNN model for soil classification
+# def create_cnn_model(num_classes=4, device='cpu'):
+#     """Create CNN model for soil classification using EfficientNet"""
+#     # Load pre-trained EfficientNet
+#     model = models.efficientnet_b0(pretrained=True)
+    
+#     # Freeze early layers for transfer learning
+#     for param in model.parameters():
+#         param.requires_grad = False
+    
+#     # Replace the classifier head
+#     num_features = model.classifier[1].in_features
+#     model.classifier = nn.Sequential(
+#         nn.Dropout(p=0.3),
+#         nn.Linear(num_features, 512),
+#         nn.ReLU(),
+#         nn.BatchNorm1d(512),
+#         nn.Dropout(p=0.5),
+#         nn.Linear(512, num_classes)
+#     )
+    
+#     # Move model to appropriate device
+#     model = model.to(device)
+    
+#     return model
+
+# # Training function
+# def train_model(model, train_loader, val_loader, criterion, optimizer, scheduler, device, num_epochs=30):
+#     """Train the model"""
+#     train_losses = []
+#     val_losses = []
+#     val_accuracies = []
+    
+#     best_acc = 0.0
+#     best_model_wts = None
+    
+#     for epoch in range(num_epochs):
+#         print(f'Epoch {epoch+1}/{num_epochs}')
+#         print('-' * 10)
+        
+#         # Training phase
+#         model.train()
+#         running_loss = 0.0
+#         running_corrects = 0
+        
+#         # Use mixed precision for faster training on GPU
+#         if device.type == 'cuda':
+#             scaler = torch.cuda.amp.GradScaler()
+        
+#         for inputs, labels in train_loader:
+#             inputs = inputs.to(device)
+#             labels = labels.to(device)
+            
+#             optimizer.zero_grad()
+            
+#             if device.type == 'cuda':
+#                 # Mixed precision training
+#                 with torch.cuda.amp.autocast():
+#                     outputs = model(inputs)
+#                     loss = criterion(outputs, labels)
+                
+#                 scaler.scale(loss).backward()
+#                 scaler.step(optimizer)
+#                 scaler.update()
+#             else:
+#                 outputs = model(inputs)
+#                 loss = criterion(outputs, labels)
+#                 loss.backward()
+#                 optimizer.step()
+            
+#             # Statistics
+#             _, preds = torch.max(outputs, 1)
+#             running_loss += loss.item() * inputs.size(0)
+#             running_corrects += torch.sum(preds == labels.data)
+        
+#         epoch_loss = running_loss / len(train_loader.dataset)
+#         epoch_acc = running_corrects.double() / len(train_loader.dataset)
+        
+#         print(f'Train Loss: {epoch_loss:.4f} Acc: {epoch_acc:.4f}')
+        
+#         # Validation phase
+#         model.eval()
+#         running_loss = 0.0
+#         running_corrects = 0
+        
+#         with torch.no_grad():
+#             for inputs, labels in val_loader:
+#                 inputs = inputs.to(device)
+#                 labels = labels.to(device)
+                
+#                 outputs = model(inputs)
+#                 loss = criterion(outputs, labels)
+                
+#                 _, preds = torch.max(outputs, 1)
+#                 running_loss += loss.item() * inputs.size(0)
+#                 running_corrects += torch.sum(preds == labels.data)
+        
+#         val_loss = running_loss / len(val_loader.dataset)
+#         val_acc = running_corrects.double() / len(val_loader.dataset)
+        
+#         print(f'Val Loss: {val_loss:.4f} Acc: {val_acc:.4f}')
+        
+#         # Step the scheduler
+#         if scheduler:
+#             scheduler.step(val_loss)
+        
+#         # Save best model
+#         if val_acc > best_acc:
+#             best_acc = val_acc
+#             best_model_wts = model.state_dict().copy()
+        
+#         # Store metrics
+#         train_losses.append(epoch_loss)
+#         val_losses.append(val_loss)
+#         val_accuracies.append(val_acc.cpu().numpy())
+    
+#     # Load best model weights
+#     model.load_state_dict(best_model_wts)
+    
+#     return model, train_losses, val_losses, val_accuracies
+
+# # Fine-tuning function
+# def fine_tune_model(model, train_loader, val_loader, criterion, optimizer, scheduler, device, num_epochs=10):
+#     """Fine-tune the model by unfreezing some layers"""
+#     print("🔄 Starting fine-tuning phase...")
+    
+#     # Unfreeze all layers for fine-tuning
+#     for param in model.parameters():
+#         param.requires_grad = True
+    
+#     # Use a lower learning rate for fine-tuning
+#     for param_group in optimizer.param_groups:
+#         param_group['lr'] = 0.0001
+    
+#     # Train with all layers unfrozen
+#     model, _, _, _ = train_model(model, train_loader, val_loader, criterion, 
+#                                 optimizer, scheduler, device, num_epochs)
+    
+#     return model
+
+# # Evaluation function
+# def evaluate_model(model, test_loader, device):
+#     """Evaluate the model on test data"""
+#     model.eval()
+#     running_corrects = 0
+    
+#     all_preds = []
+#     all_labels = []
+    
+#     with torch.no_grad():
+#         for inputs, labels in test_loader:
+#             inputs = inputs.to(device)
+#             labels = labels.to(device)
+            
+#             outputs = model(inputs)
+#             _, preds = torch.max(outputs, 1)
+            
+#             running_corrects += torch.sum(preds == labels.data)
+            
+#             all_preds.extend(preds.cpu().numpy())
+#             all_labels.extend(labels.cpu().numpy())
+    
+#     test_acc = running_corrects.double() / len(test_loader.dataset)
+#     print(f'✅ Test Accuracy: {test_acc:.4f}')
+    
+#     return test_acc, all_preds, all_labels
+
+# def train_cnn_model():
+#     """Train CNN model for soil image classification"""
+#     try:
+#         # Configure device
+#         device = configure_gpu()
+        
+#         # Dataset paths
+#         dataset_dir = os.path.join('ml-backend', 'data', 'Dataset')
+#         train_dir = os.path.join(dataset_dir, 'Train')
+#         test_dir = os.path.join(dataset_dir, 'test')
+        
+#         if not os.path.exists(train_dir):
+#             print(f"❌ Training directory not found: {train_dir}")
+#             return None
+#         if not os.path.exists(test_dir):
+#             print(f"❌ Test directory not found: {test_dir}")
+#             return None
+        
+#         # Data transformations
+#         train_transform = transforms.Compose([
+#             transforms.Resize((224, 224)),
+#             transforms.RandomHorizontalFlip(),
+#             transforms.RandomVerticalFlip(),
+#             transforms.RandomRotation(20),
+#             transforms.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2, hue=0.1),
+#             transforms.ToTensor(),
+#             transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+#         ])
+        
+#         test_transform = transforms.Compose([
+#             transforms.Resize((224, 224)),
+#             transforms.ToTensor(),
+#             transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+#         ])
+        
+#         # Create datasets
+#         train_dataset = SoilDataset(train_dir, transform=train_transform)
+#         test_dataset = SoilDataset(test_dir, transform=test_transform)
+        
+#         # Split train into train and validation
+#         train_size = int(0.8 * len(train_dataset))
+#         val_size = len(train_dataset) - train_size
+#         train_subset, val_subset = torch.utils.data.random_split(
+#             train_dataset, [train_size, val_size])
+        
+#         # Create data loaders
+#         batch_size = 32
+#         train_loader = DataLoader(train_subset, batch_size=batch_size, 
+#                                  shuffle=True, num_workers=4, pin_memory=True)
+#         val_loader = DataLoader(val_subset, batch_size=batch_size, 
+#                                shuffle=False, num_workers=4, pin_memory=True)
+#         test_loader = DataLoader(test_dataset, batch_size=batch_size, 
+#                                 shuffle=False, num_workers=4, pin_memory=True)
+        
+#         print(f"Training samples: {len(train_subset)}")
+#         print(f"Validation samples: {len(val_subset)}")
+#         print(f"Test samples: {len(test_dataset)}")
+#         print(f"Number of classes: {len(train_dataset.classes)}")
+#         print(f"Classes: {train_dataset.classes}")
+        
+#         # Create model
+#         model = create_cnn_model(num_classes=len(train_dataset.classes), device=device)
+        
+#         # Define loss function and optimizer
+#         criterion = nn.CrossEntropyLoss()
+#         optimizer = optim.Adam(model.parameters(), lr=0.001)
+#         scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.2, patience=5, verbose=True)
+        
+#         # Display model summary
+#         print(model)
+        
+#         # Train the model
+#         print("🚀 Starting training...")
+#         start_time = time.time()
+        
+#         model, train_losses, val_losses, val_accuracies = train_model(
+#             model, train_loader, val_loader, criterion, optimizer, scheduler, device, num_epochs=30)
+        
+#         # Fine-tune the model
+#         model = fine_tune_model(model, train_loader, val_loader, criterion, 
+#                                optimizer, scheduler, device, num_epochs=10)
+        
+#         training_time = time.time() - start_time
+#         print(f"✅ Training completed in {training_time//60:.0f}m {training_time%60:.0f}s")
+        
+#         # Evaluate on test set
+#         test_acc, all_preds, all_labels = evaluate_model(model, test_loader, device)
+        
+#         # Save the model
+#         os.makedirs('ml-backend/saved_models', exist_ok=True)
+#         model_path = os.path.join('ml-backend', 'saved_models', 'pytorch_soil_model.pth')
+        
+#         # Save both model and class information
+#         torch.save({
+#             'model_state_dict': model.state_dict(),
+#             'class_to_idx': train_dataset.class_to_idx,
+#             'classes': train_dataset.classes
+#         }, model_path)
+        
+#         print(f"✅ Model saved to {model_path}")
+#         return model, test_acc
+        
+#     except Exception as e:
+#         print(f"❌ Error training CNN model: {str(e)}")
+#         import traceback
+#         traceback.print_exc()
+#         raise
+
+# if __name__ == "__main__":
+#     # Train the model
+#     model, test_accuracy = train_cnn_model()
+
+#BELOW IS TRIAL 8 CLASSES
 
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from torch.utils.data import DataLoader, Dataset
+from torch.utils.data import DataLoader, Dataset, random_split
 from torchvision import transforms, models
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 import os
 from PIL import Image
-import numpy as np
-import matplotlib.pyplot as plt
-from sklearn.metrics import accuracy_score
 import time
 
-# Configure GPU for optimal performance
+# ---------------- GPU CONFIG ----------------
 def configure_gpu():
-    """Configure GPU settings for PyTorch"""
     if torch.cuda.is_available():
         device = torch.device("cuda")
         print(f"✅ GPU detected: {torch.cuda.get_device_name(0)}")
-        print(f"✅ GPU Memory: {torch.cuda.get_device_properties(0).total_memory / 1024**3:.2f} GB")
-        
-        # Set CuDNN benchmark for better performance
         torch.backends.cudnn.benchmark = True
         return device
     else:
-        device = torch.device("cpu")
-        print("⚠️  No GPU detected. Using CPU instead.")
-        return device
+        print("⚠️ No GPU detected. Using CPU instead.")
+        return torch.device("cpu")
 
-# Custom dataset class
+# ---------------- CUSTOM DATASET ----------------
 class SoilDataset(Dataset):
     def __init__(self, root_dir, transform=None):
         self.root_dir = root_dir
@@ -351,304 +687,129 @@ class SoilDataset(Dataset):
         self.classes = sorted(os.listdir(root_dir))
         self.class_to_idx = {cls_name: i for i, cls_name in enumerate(self.classes)}
         self.images = []
-        
-        # Load image paths and labels
         for cls_name in self.classes:
             cls_dir = os.path.join(root_dir, cls_name)
             if os.path.isdir(cls_dir):
                 for img_name in os.listdir(cls_dir):
                     if img_name.lower().endswith(('.png', '.jpg', '.jpeg')):
                         self.images.append((os.path.join(cls_dir, img_name), self.class_to_idx[cls_name]))
-    
+
     def __len__(self):
         return len(self.images)
-    
+
     def __getitem__(self, idx):
         img_path, label = self.images[idx]
-        
-        # Load image
-        image = Image.open(img_path).convert('RGB')  # Ensure 3 channels
-        
+        image = Image.open(img_path).convert('RGB')
         if self.transform:
             image = self.transform(image)
-        
         return image, label
 
-# Create CNN model for soil classification
-def create_cnn_model(num_classes=4, device='cpu'):
-    """Create CNN model for soil classification using EfficientNet"""
-    # Load pre-trained EfficientNet
+# ---------------- MODEL ----------------
+def create_cnn_model(num_classes, device):
     model = models.efficientnet_b0(pretrained=True)
-    
-    # Freeze early layers for transfer learning
     for param in model.parameters():
         param.requires_grad = False
-    
-    # Replace the classifier head
     num_features = model.classifier[1].in_features
     model.classifier = nn.Sequential(
-        nn.Dropout(p=0.3),
+        nn.Dropout(0.3),
         nn.Linear(num_features, 512),
         nn.ReLU(),
         nn.BatchNorm1d(512),
-        nn.Dropout(p=0.5),
+        nn.Dropout(0.5),
         nn.Linear(512, num_classes)
     )
-    
-    # Move model to appropriate device
-    model = model.to(device)
-    
-    return model
+    return model.to(device)
 
-# Training function
+# ---------------- TRAINING ----------------
 def train_model(model, train_loader, val_loader, criterion, optimizer, scheduler, device, num_epochs=30):
-    """Train the model"""
-    train_losses = []
-    val_losses = []
-    val_accuracies = []
-    
     best_acc = 0.0
     best_model_wts = None
-    
     for epoch in range(num_epochs):
-        print(f'Epoch {epoch+1}/{num_epochs}')
-        print('-' * 10)
-        
-        # Training phase
+        print(f"\nEpoch {epoch+1}/{num_epochs}")
         model.train()
-        running_loss = 0.0
-        running_corrects = 0
-        
-        # Use mixed precision for faster training on GPU
-        if device.type == 'cuda':
-            scaler = torch.cuda.amp.GradScaler()
-        
+        running_loss, running_corrects = 0.0, 0
         for inputs, labels in train_loader:
-            inputs = inputs.to(device)
-            labels = labels.to(device)
-            
+            inputs, labels = inputs.to(device), labels.to(device)
             optimizer.zero_grad()
-            
-            if device.type == 'cuda':
-                # Mixed precision training
-                with torch.cuda.amp.autocast():
-                    outputs = model(inputs)
-                    loss = criterion(outputs, labels)
-                
-                scaler.scale(loss).backward()
-                scaler.step(optimizer)
-                scaler.update()
-            else:
-                outputs = model(inputs)
-                loss = criterion(outputs, labels)
-                loss.backward()
-                optimizer.step()
-            
-            # Statistics
+            outputs = model(inputs)
+            loss = criterion(outputs, labels)
+            loss.backward()
+            optimizer.step()
             _, preds = torch.max(outputs, 1)
             running_loss += loss.item() * inputs.size(0)
             running_corrects += torch.sum(preds == labels.data)
-        
         epoch_loss = running_loss / len(train_loader.dataset)
         epoch_acc = running_corrects.double() / len(train_loader.dataset)
-        
-        print(f'Train Loss: {epoch_loss:.4f} Acc: {epoch_acc:.4f}')
-        
-        # Validation phase
+        print(f"Train Loss: {epoch_loss:.4f}, Acc: {epoch_acc:.4f}")
+
+        # Validation
         model.eval()
-        running_loss = 0.0
-        running_corrects = 0
-        
+        val_loss, val_corrects = 0.0, 0
         with torch.no_grad():
             for inputs, labels in val_loader:
-                inputs = inputs.to(device)
-                labels = labels.to(device)
-                
+                inputs, labels = inputs.to(device), labels.to(device)
                 outputs = model(inputs)
                 loss = criterion(outputs, labels)
-                
                 _, preds = torch.max(outputs, 1)
-                running_loss += loss.item() * inputs.size(0)
-                running_corrects += torch.sum(preds == labels.data)
-        
-        val_loss = running_loss / len(val_loader.dataset)
-        val_acc = running_corrects.double() / len(val_loader.dataset)
-        
-        print(f'Val Loss: {val_loss:.4f} Acc: {val_acc:.4f}')
-        
-        # Step the scheduler
-        if scheduler:
-            scheduler.step(val_loss)
-        
-        # Save best model
+                val_loss += loss.item() * inputs.size(0)
+                val_corrects += torch.sum(preds == labels.data)
+        val_loss /= len(val_loader.dataset)
+        val_acc = val_corrects.double() / len(val_loader.dataset)
+        print(f"Val Loss: {val_loss:.4f}, Acc: {val_acc:.4f}")
+        if scheduler: scheduler.step(val_loss)
+
         if val_acc > best_acc:
             best_acc = val_acc
             best_model_wts = model.state_dict().copy()
-        
-        # Store metrics
-        train_losses.append(epoch_loss)
-        val_losses.append(val_loss)
-        val_accuracies.append(val_acc.cpu().numpy())
-    
-    # Load best model weights
+            os.makedirs("ml-backend/saved_models", exist_ok=True)
+            torch.save({
+                "model_state_dict": model.state_dict(),
+                "classes": train_loader.dataset.dataset.classes
+            }, "ml-backend/saved_models/pytorch_soil_model_8c.pth")
+            print(f"✅ Best model saved with accuracy {best_acc:.4f}")
     model.load_state_dict(best_model_wts)
-    
-    return model, train_losses, val_losses, val_accuracies
+    return model, best_acc
 
-# Fine-tuning function
-def fine_tune_model(model, train_loader, val_loader, criterion, optimizer, scheduler, device, num_epochs=10):
-    """Fine-tune the model by unfreezing some layers"""
-    print("🔄 Starting fine-tuning phase...")
-    
-    # Unfreeze all layers for fine-tuning
-    for param in model.parameters():
-        param.requires_grad = True
-    
-    # Use a lower learning rate for fine-tuning
-    for param_group in optimizer.param_groups:
-        param_group['lr'] = 0.0001
-    
-    # Train with all layers unfrozen
-    model, _, _, _ = train_model(model, train_loader, val_loader, criterion, 
-                                optimizer, scheduler, device, num_epochs)
-    
+# ---------------- MAIN ----------------
+def train_cnn_model():
+    device = configure_gpu()
+    dataset_dir = os.path.join("ml-backend", "data", "CyAUG-Dataset")
+    if not os.path.exists(dataset_dir):
+        raise FileNotFoundError(f"Dataset not found: {dataset_dir}")
+
+    transform = transforms.Compose([
+        transforms.Resize((224, 224)),
+        transforms.RandomHorizontalFlip(),
+        transforms.RandomRotation(15),
+        transforms.ToTensor(),
+        transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+    ])
+
+    dataset = SoilDataset(dataset_dir, transform=transform)
+    num_classes = len(dataset.classes)
+    print(f"Classes detected: {dataset.classes}")
+
+    # 80-10-10 split
+    train_size = int(0.8 * len(dataset))
+    val_size = int(0.1 * len(dataset))
+    test_size = len(dataset) - train_size - val_size
+    train_set, val_set, test_set = random_split(dataset, [train_size, val_size, test_size])
+
+    train_loader = DataLoader(train_set, batch_size=32, shuffle=True, num_workers=0)
+    val_loader = DataLoader(val_set, batch_size=32, shuffle=False, num_workers=0)
+    test_loader = DataLoader(test_set, batch_size=32, shuffle=False, num_workers=0)
+
+    model = create_cnn_model(num_classes, device)
+    criterion = nn.CrossEntropyLoss()
+    optimizer = optim.Adam(model.parameters(), lr=0.001)
+    scheduler = ReduceLROnPlateau(optimizer, mode="min", factor=0.2, patience=5)
+
+    print("🚀 Training started...")
+    model, best_acc = train_model(model, train_loader, val_loader, criterion, optimizer, scheduler, device, num_epochs=30)
+    print(f"✅ Training complete. Best Val Acc: {best_acc:.4f}")
     return model
 
-# Evaluation function
-def evaluate_model(model, test_loader, device):
-    """Evaluate the model on test data"""
-    model.eval()
-    running_corrects = 0
-    
-    all_preds = []
-    all_labels = []
-    
-    with torch.no_grad():
-        for inputs, labels in test_loader:
-            inputs = inputs.to(device)
-            labels = labels.to(device)
-            
-            outputs = model(inputs)
-            _, preds = torch.max(outputs, 1)
-            
-            running_corrects += torch.sum(preds == labels.data)
-            
-            all_preds.extend(preds.cpu().numpy())
-            all_labels.extend(labels.cpu().numpy())
-    
-    test_acc = running_corrects.double() / len(test_loader.dataset)
-    print(f'✅ Test Accuracy: {test_acc:.4f}')
-    
-    return test_acc, all_preds, all_labels
-
-def train_cnn_model():
-    """Train CNN model for soil image classification"""
-    try:
-        # Configure device
-        device = configure_gpu()
-        
-        # Dataset paths
-        dataset_dir = os.path.join('ml-backend', 'data', 'Dataset')
-        train_dir = os.path.join(dataset_dir, 'Train')
-        test_dir = os.path.join(dataset_dir, 'test')
-        
-        if not os.path.exists(train_dir):
-            print(f"❌ Training directory not found: {train_dir}")
-            return None
-        if not os.path.exists(test_dir):
-            print(f"❌ Test directory not found: {test_dir}")
-            return None
-        
-        # Data transformations
-        train_transform = transforms.Compose([
-            transforms.Resize((224, 224)),
-            transforms.RandomHorizontalFlip(),
-            transforms.RandomVerticalFlip(),
-            transforms.RandomRotation(20),
-            transforms.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2, hue=0.1),
-            transforms.ToTensor(),
-            transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
-        ])
-        
-        test_transform = transforms.Compose([
-            transforms.Resize((224, 224)),
-            transforms.ToTensor(),
-            transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
-        ])
-        
-        # Create datasets
-        train_dataset = SoilDataset(train_dir, transform=train_transform)
-        test_dataset = SoilDataset(test_dir, transform=test_transform)
-        
-        # Split train into train and validation
-        train_size = int(0.8 * len(train_dataset))
-        val_size = len(train_dataset) - train_size
-        train_subset, val_subset = torch.utils.data.random_split(
-            train_dataset, [train_size, val_size])
-        
-        # Create data loaders
-        batch_size = 32
-        train_loader = DataLoader(train_subset, batch_size=batch_size, 
-                                 shuffle=True, num_workers=4, pin_memory=True)
-        val_loader = DataLoader(val_subset, batch_size=batch_size, 
-                               shuffle=False, num_workers=4, pin_memory=True)
-        test_loader = DataLoader(test_dataset, batch_size=batch_size, 
-                                shuffle=False, num_workers=4, pin_memory=True)
-        
-        print(f"Training samples: {len(train_subset)}")
-        print(f"Validation samples: {len(val_subset)}")
-        print(f"Test samples: {len(test_dataset)}")
-        print(f"Number of classes: {len(train_dataset.classes)}")
-        print(f"Classes: {train_dataset.classes}")
-        
-        # Create model
-        model = create_cnn_model(num_classes=len(train_dataset.classes), device=device)
-        
-        # Define loss function and optimizer
-        criterion = nn.CrossEntropyLoss()
-        optimizer = optim.Adam(model.parameters(), lr=0.001)
-        scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.2, patience=5, verbose=True)
-        
-        # Display model summary
-        print(model)
-        
-        # Train the model
-        print("🚀 Starting training...")
-        start_time = time.time()
-        
-        model, train_losses, val_losses, val_accuracies = train_model(
-            model, train_loader, val_loader, criterion, optimizer, scheduler, device, num_epochs=30)
-        
-        # Fine-tune the model
-        model = fine_tune_model(model, train_loader, val_loader, criterion, 
-                               optimizer, scheduler, device, num_epochs=10)
-        
-        training_time = time.time() - start_time
-        print(f"✅ Training completed in {training_time//60:.0f}m {training_time%60:.0f}s")
-        
-        # Evaluate on test set
-        test_acc, all_preds, all_labels = evaluate_model(model, test_loader, device)
-        
-        # Save the model
-        os.makedirs('ml-backend/saved_models', exist_ok=True)
-        model_path = os.path.join('ml-backend', 'saved_models', 'pytorch_soil_model.pth')
-        
-        # Save both model and class information
-        torch.save({
-            'model_state_dict': model.state_dict(),
-            'class_to_idx': train_dataset.class_to_idx,
-            'classes': train_dataset.classes
-        }, model_path)
-        
-        print(f"✅ Model saved to {model_path}")
-        return model, test_acc
-        
-    except Exception as e:
-        print(f"❌ Error training CNN model: {str(e)}")
-        import traceback
-        traceback.print_exc()
-        raise
-
 if __name__ == "__main__":
-    # Train the model
-    model, test_accuracy = train_cnn_model()
+    train_cnn_model()
+
+

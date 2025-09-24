@@ -10,6 +10,7 @@ import SoilAnalysis from './pages/SoilAnalysis';
 import ImageAnalysis from './pages/ImageAnalysis';
 import RegionAnalysis from './pages/RegionAnalysis';  // ✅ correct
 import './styles/App.css';
+import WeatherPage from './pages/WeatherPage';
 
 function App() {
   return (
@@ -41,7 +42,15 @@ function App() {
                 path="/region-analysis"
                 element={
                   <PrivateRoute>
-                    <RegionAnalysis /> {/* ✅ page */}
+                    <RegionAnalysis /> 
+                  </PrivateRoute>
+                }
+              />
+              <Route
+                path="/weather/current"
+                element={
+                  <PrivateRoute>
+                    <WeatherPage/>
                   </PrivateRoute>
                 }
               />
