@@ -679,7 +679,7 @@ def configure_gpu():
         print("⚠️ No GPU detected. Using CPU instead.")
         return torch.device("cpu")
 
-# ---------------- CUSTOM DATASET ----------------
+
 class SoilDataset(Dataset):
     def __init__(self, root_dir, transform=None):
         self.root_dir = root_dir

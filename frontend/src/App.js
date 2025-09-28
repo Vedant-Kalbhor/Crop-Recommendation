@@ -11,6 +11,7 @@ import ImageAnalysis from './pages/ImageAnalysis';
 import RegionAnalysis from './pages/RegionAnalysis';  // ✅ correct
 import './styles/App.css';
 import WeatherPage from './pages/WeatherPage';
+import Feedback from './pages/Feedback';
 
 function App() {
   return (
@@ -51,6 +52,14 @@ function App() {
                 element={
                   <PrivateRoute>
                     <WeatherPage/>
+                  </PrivateRoute>
+                }
+              />
+              <Route
+                path="/id/feedback"
+                element={
+                  <PrivateRoute>
+                    <Feedback/>
                   </PrivateRoute>
                 }
               />

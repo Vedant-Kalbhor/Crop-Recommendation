@@ -274,7 +274,7 @@
 
 #------
 
-#!/usr/bin/env python3
+
 """
 FastAPI app for Crop Recommendation ML API
 - Soil params prediction
@@ -292,7 +292,7 @@ from contextlib import asynccontextmanager
 import joblib
 import os
 
-# Import local modules
+
 from schemas.soil_params import SoilParams
 from schemas.recommendation import RecommendationResponse
 from services.prediction_service import PredictionService
@@ -314,21 +314,21 @@ MODEL_DIR = "./saved_models"
 region_stats = None
 region_metadata = None
 
-# ------------------- GLOBAL FLAGS -------------------
+
 models_loaded = False
 
-# ------------------- LIFESPAN -------------------
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     global models_loaded, region_stats, region_metadata
     try:
-        # Load ML models
+        
         logger.info("Loading ML models from PredictionService...")
         prediction_service.load_models()
         models_loaded = True
         logger.info("✅ ML models loaded successfully")
 
-        # Load region stats + metadata
+
         stats_path = os.path.join(MODEL_DIR, "region_crop_stats.joblib")
         meta_path = os.path.join(MODEL_DIR, "region_metadata.joblib")
 
@@ -351,7 +351,7 @@ async def lifespan(app: FastAPI):
     yield
     logger.info("Shutting down application...")
 
-# ------------------- APP INIT -------------------
+
 app = FastAPI(
     title="Crop Recommendation ML API",
     description="Machine Learning API for crop recommendations based on soil parameters, images, and regional data",
@@ -361,7 +361,7 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-# Enable CORS
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -402,7 +402,7 @@ async def health_check():
         "timestamp": datetime.now().isoformat()
     }
 
-# ---------- Soil Params Prediction ----------
+
 @app.post("/predict/soil-params")
 @app.post("/batch-predict/soil-params")
 async def predict_soil_params(soil_params: Union[SoilParams, List[SoilParams]]):
@@ -437,7 +437,7 @@ async def batch_predict_soil_params(soil_params_list: List[SoilParams]):
         logger.error(f"Error in batch prediction: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
-# ---------- Soil Image Prediction ----------
+
 @app.post("/predict/soil-image", response_model=RecommendationResponse)
 async def predict_soil_image(file: UploadFile = File(...)):
     try:
@@ -459,7 +459,7 @@ async def predict_soil_image(file: UploadFile = File(...)):
         logger.error(f"Error in soil image prediction: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
-# ---------- Region Prediction (UPDATED) ----------
+
 @app.post("/predict/region")
 async def predict_region(data: dict):
     if region_stats is None:
@@ -480,22 +480,22 @@ async def predict_region(data: dict):
     if not crop_dict:
         return {"region": region, "district": district, "recommendations": []}
 
-    # Sort crops by production and pick top 5
+    
     sorted_crops = sorted(crop_dict.items(), key=lambda x: x[1], reverse=True)[:5]
 
     recommendations = [
         {
             "crop": crop,
-            "confidence": 0.8,  # static for now
+            "confidence": 0.8,  # static
             "reason": f"Top crop in {region}{' - ' + district if district else ''} "
-                      f"(Production: {int(prod)})"
+                      f"[Production (in Tonnes): {int(prod)}]"
         }
         for crop, prod in sorted_crops
     ]
 
     return {"region": region, "district": district, "recommendations": recommendations}
 
-# ---------- Available States/Districts ----------
+
 @app.get("/available/states")
 async def get_available_states():
     if region_metadata is None:

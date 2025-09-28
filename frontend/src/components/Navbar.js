@@ -35,6 +35,9 @@ const Navbar = () => {
           <Link to="/weather/current" className="nav-link">
             Weather
           </Link>
+          <Link to="/id/feedback" className="nav-link">
+            Feedback
+          </Link>
 
         </div>
         

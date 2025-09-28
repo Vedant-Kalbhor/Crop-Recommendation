@@ -1,3 +1,4 @@
+// frontend/src/pages/Dashboard.js
 import React, { useState, useEffect } from 'react';
 import { recommendationAPI } from '../services/recommendationAPI';
 import { weatherAPI } from '../services/weatherAPI';
@@ -22,20 +23,26 @@ const Dashboard = () => {
 
   const fetchData = async () => {
     try {
+      // recommendationAPI.getHistory() should hit backend /history and return { data: [...], pagination: {...} }
       const [historyResponse, weatherResponse] = await Promise.all([
         recommendationAPI.getHistory(),
         weatherAPI.getCurrentWeather()
       ]);
-      
-      setHistory(historyResponse.data);
+
+      // Support both shapes just in case: either response.data is array OR response.data.data is array
+      const histData = Array.isArray(historyResponse.data)
+        ? historyResponse.data
+        : (historyResponse.data && Array.isArray(historyResponse.data.data) ? historyResponse.data.data : []);
+
+      setHistory(histData);
       setWeather(weatherResponse.data);
-      
-      // Calculate stats
-      const total = historyResponse.data.length;
-      const success = historyResponse.data.filter(r => r.successStatus === 'success').length;
-      const failure = historyResponse.data.filter(r => r.successStatus === 'failure').length;
-      const pending = historyResponse.data.filter(r => r.successStatus === 'pending').length;
-      
+
+      // Calculate stats locally for simple dashboard
+      const total = histData.length;
+      const success = histData.filter(r => r.successStatus === 'success').length;
+      const failure = histData.filter(r => r.successStatus === 'failure').length;
+      const pending = histData.filter(r => r.successStatus === 'pending').length;
+
       setStats({ total, success, failure, pending });
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
@@ -51,7 +58,7 @@ const Dashboard = () => {
   return (
     <div className="dashboard">
       <h1>Dashboard</h1>
-      
+
       <div className="dashboard-grid">
         <div className="stats-section">
           <h2>Recommendation Statistics</h2>
@@ -74,7 +81,7 @@ const Dashboard = () => {
             </div>
           </div>
         </div>
-        
+
         {weather && (
           <div className="weather-section">
             <h2>Current Weather</h2>
@@ -82,7 +89,7 @@ const Dashboard = () => {
           </div>
         )}
       </div>
-      
+
       <div className="history-section">
         <h2>Recent Recommendations</h2>
         {history.length === 0 ? (
@@ -91,13 +98,19 @@ const Dashboard = () => {
           <div className="history-list">
             {history.map(item => (
               <div key={item._id} className="history-item">
-                <h4>{new Date(item.createdAt || item.createAt).toLocaleDateString()}</h4>
+                <h4>
+                  {new Date(item.createdAt || item.createAt || item._id?.toString()?.slice(0,8)).toLocaleDateString()}
+                </h4>
                 <p>Method: {item.method}</p>
                 <p>Status: {item.successStatus}</p>
                 <div className="recommended-crops">
-                  {item.recommendations.slice(0, 3).map((rec, idx) => (
-                    <span key={idx} className="crop-tag">{rec.crop}</span>
-                  ))}
+                  {(item.recommendations && item.recommendations.length > 0) ? (
+                    item.recommendations.slice(0, 3).map((rec, idx) => (
+                      <span key={idx} className="crop-tag">{rec.crop || rec}</span>
+                    ))
+                  ) : (
+                    <em>No crop recommendations</em>
+                  )}
                 </div>
               </div>
             ))}
