@@ -12,7 +12,7 @@ const RecommendationSchema = new mongoose.Schema({
     required: true
   },
   inputData: {
-    // Soil parameters
+
     N: Number,
     P: Number,
     K: Number,
@@ -21,11 +21,11 @@ const RecommendationSchema = new mongoose.Schema({
     rainfall: Number,
     ph: Number,
 
-    // ✅ Use snake_case to match ML API
+
     imageUrl: String,
     soil_type: String,
 
-    // Region analysis
+
     region: String,
     coordinates: [Number],
     weatherData: {

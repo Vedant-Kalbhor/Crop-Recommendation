@@ -1,7 +1,5 @@
 const mongoose = require('mongoose');
 const Recommendation = require('../models/Recommendation');
-
-// Get recommendation history for user (with pagination & filters)
 const getHistory = async (req, res) => {
   try {
     const { method, status, limit = 10, page = 1 } = req.query;
@@ -13,19 +11,19 @@ const getHistory = async (req, res) => {
     if (status && status !== 'all') query.successStatus = status;
 
     const lim = parseInt(limit, 10);
-    const pg = parseInt(page, 10);
-    const skip = (Math.max(pg, 1) - 1) * lim;
+    const pg = Math.max(parseInt(page, 10), 1);
+    const skip = (pg - 1) * lim;
 
     const [recommendations, total] = await Promise.all([
       Recommendation.find(query)
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(lim)
-        .populate('userId', 'username email')
         .lean(),
       Recommendation.countDocuments(query)
     ]);
 
+    // !! IMPORTANT: Frontend expects { data: [...], pagination: {...} }
     return res.json({
       data: recommendations,
       pagination: {
@@ -35,45 +33,11 @@ const getHistory = async (req, res) => {
         pages: Math.ceil(total / lim)
       }
     });
-  } catch (error) {
-    console.error('Get recommendation history error:', error);
+  } catch (err) {
+    console.error('Get recommendation history error:', err);
     return res.status(500).json({ message: 'Server error' });
   }
-};
-
-// Update recommendation success status (feedback)
-const updateRecommendationStatus = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { successStatus, feedback } = req.body;
-    const userId = req.user.id;
-
-    if (!['success', 'failure', 'pending'].includes(successStatus)) {
-      return res.status(400).json({ message: 'Invalid successStatus value' });
-    }
-
-    const recommendation = await Recommendation.findOne({
-      _id: id,
-      userId: mongoose.Types.ObjectId(userId)
-    });
-
-    if (!recommendation) {
-      return res.status(404).json({ message: 'Recommendation not found' });
-    }
-
-    recommendation.successStatus = successStatus;
-    if (feedback) recommendation.feedback = feedback;
-    await recommendation.save();
-
-    return res.json(recommendation);
-  } catch (error) {
-    console.error('Update recommendation status error:', error);
-    return res.status(500).json({ message: 'Server error' });
-  }
-};
-
-
-// Get recommendation by ID
+};// Get recommendation by ID
 const getRecommendationById = async (req, res) => {
   try {
     const { id } = req.params;
@@ -86,20 +50,16 @@ const getRecommendationById = async (req, res) => {
     const recommendation = await Recommendation.findOne({
       _id: id,
       userId: mongoose.Types.ObjectId(userId)
-    }).populate('userId', 'username email');
+    }).lean();
 
-    if (!recommendation) {
-      return res.status(404).json({ message: 'Recommendation not found' });
-    }
+    if (!recommendation) return res.status(404).json({ message: 'Recommendation not found' });
 
     return res.json(recommendation);
-  } catch (error) {
-    console.error('Get recommendation by ID error:', error);
+  } catch (err) {
+    console.error('Get recommendation by ID error:', err);
     return res.status(500).json({ message: 'Server error' });
   }
-};
-
-// Delete recommendation
+};// Delete recommendation
 const deleteRecommendation = async (req, res) => {
   try {
     const { id } = req.params;
@@ -114,18 +74,45 @@ const deleteRecommendation = async (req, res) => {
       userId: mongoose.Types.ObjectId(userId)
     });
 
-    if (!recommendation) {
-      return res.status(404).json({ message: 'Recommendation not found' });
-    }
+    if (!recommendation) return res.status(404).json({ message: 'Recommendation not found' });
 
     return res.json({ message: 'Recommendation deleted successfully' });
-  } catch (error) {
-    console.error('Delete recommendation error:', error);
+  } catch (err) {
+    console.error('Delete recommendation error:', err);
     return res.status(500).json({ message: 'Server error' });
   }
-};
+};// Update recommendation status + feedback (used by Feedback page)
+const updateRecommendationStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { successStatus, feedback } = req.body;
+    const userId = req.user.id;
 
-// Get recommendation statistics
+    if (!['success', 'failure', 'pending'].includes(successStatus)) {
+      return res.status(400).json({ message: 'Invalid successStatus' });
+    }
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ message: 'Invalid recommendation ID' });
+    }
+
+    const rec = await Recommendation.findOne({
+      _id: id,
+      userId: mongoose.Types.ObjectId(userId)
+    });
+
+    if (!rec) return res.status(404).json({ message: 'Recommendation not found' });
+
+    rec.successStatus = successStatus;
+    if (feedback !== undefined) rec.feedback = feedback;
+    await rec.save();
+
+    return res.json(rec);
+  } catch (err) {
+    console.error('Update recommendation status error:', err);
+    return res.status(500).json({ message: 'Server error' });
+  }
+};// Get simple stats for user
 const getStats = async (req, res) => {
   try {
     const userId = mongoose.Types.ObjectId(req.user.id);
@@ -135,48 +122,7 @@ const getStats = async (req, res) => {
     const failure = await Recommendation.countDocuments({ userId, successStatus: 'failure' });
     const pending = await Recommendation.countDocuments({ userId, successStatus: 'pending' });
 
-    const successRate = total > 0 ? (success / (success + failure)) * 100 : 0;
-
-    // Get method distribution
-    const methodDistribution = await Recommendation.aggregate([
-      { $match: { userId } },
-      {
-        $group: {
-          _id: '$method',
-          count: { $sum: 1 }
-        }
-      },
-      {
-        $project: {
-          method: '$_id',
-          count: 1,
-          _id: 0
-        }
-      }
-    ]);
-
-    // Get top recommended crops
-    const cropRecommendations = await Recommendation.aggregate([
-      { $match: { userId } },
-      { $unwind: '$recommendations' },
-      {
-        $group: {
-          _id: '$recommendations.crop',
-          count: { $sum: 1 },
-          avgConfidence: { $avg: '$recommendations.confidence' }
-        }
-      },
-      { $sort: { count: -1 } },
-      { $limit: 10 },
-      {
-        $project: {
-          crop: '$_id',
-          count: 1,
-          avgConfidence: 1,
-          _id: 0
-        }
-      }
-    ]);
+    const successRate = total > 0 ? (success / (total)) * 100 : 0; // Success/Total, simpler for dashboard
 
     return res.json({
       stats: {
@@ -185,20 +131,16 @@ const getStats = async (req, res) => {
         failure,
         pending,
         successRate: Math.round(successRate)
-      },
-      methodDistribution,
-      topCrops: cropRecommendations
+      }
     });
-  } catch (error) {
-    console.error('Get stats error:', error);
+  } catch (err) {
+    console.error('Get stats error:', err);
     return res.status(500).json({ message: 'Server error' });
   }
-};
-
-module.exports = {
+};module.exports = {
   getHistory,
   getRecommendationById,
   deleteRecommendation,
-  getStats,
-  updateRecommendationStatus
+  updateRecommendationStatus,
+  getStats
 };

@@ -1,82 +1,192 @@
 // frontend/src/pages/Feedback.js
 import React, { useState, useEffect } from 'react';
 import { recommendationAPI } from '../services/recommendationAPI';
-import '../styles/Dashboard.css'; // reuse styles or create new
+import '../styles/Dashboard.css';
 
 const Feedback = () => {
   const [pending, setPending] = useState([]);
   const [loading, setLoading] = useState(true);
   const [updatingId, setUpdatingId] = useState(null);
   const [error, setError] = useState(null);
+  const [successMessage, setSuccessMessage] = useState(null);
 
   useEffect(() => {
     fetchPending();
   }, []);
 
   const fetchPending = async () => {
-    setLoading(true);
-    setError(null);
     try {
-      // We fetch history filtered by status=pending. The backend /history supports query params.
-      const resp = await recommendationAPI.getHistory({ status: 'pending', limit: 100 });
-      const list = Array.isArray(resp.data) ? resp.data : (resp.data?.data || []);
-      setPending(list);
-    } catch (err) {
-      console.error('Error fetching pending feedbacks:', err);
+      setLoading(true);
+      setError(null);
+      const response = await recommendationAPI.getHistory();
+      
+      console.log('Feedback page - history response:', response);
+      
+      // Filter for pending recommendations from the history
+      const allRecommendations = Array.isArray(response.data) 
+        ? response.data 
+        : response.data?.data || response.data?.recommendations || [];
+      
+      const pendingRecommendations = allRecommendations.filter(
+        item => item.successStatus === 'pending'
+      );
+      
+      setPending(pendingRecommendations);
+    } catch (error) {
+      console.error('Error fetching pending feedbacks:', error);
       setError('Failed to load pending feedbacks');
     } finally {
       setLoading(false);
     }
   };
 
-  const submitFeedback = async (id, success) => {
+  const submitFeedback = async (id, isUseful) => {
     try {
       setUpdatingId(id);
-      await recommendationAPI.updateFeedback(id, { successStatus: success ? 'success' : 'failure', feedback: success ? 'Useful' : 'Not useful' });
-      // Refresh pending list
-      await fetchPending();
-    } catch (err) {
-      console.error('Error submitting feedback:', err);
-      setError('Failed to submit feedback');
+      setError(null);
+      setSuccessMessage(null);
+
+      const feedbackData = {
+        successStatus: isUseful ? 'success' : 'failure',
+        feedback: isUseful ? 'User found this recommendation useful' : 'User did not find this recommendation useful'
+      };
+
+      console.log('Submitting feedback for:', id, feedbackData);
+
+      await recommendationAPI.updateFeedback(id, feedbackData);
+      
+      setSuccessMessage(`Feedback submitted successfully!`);
+      
+      // Remove the item from the local state
+      setPending(prev => prev.filter(item => item._id !== id));
+      
+    } catch (error) {
+      console.error('Error submitting feedback:', error);
+      setError('Failed to submit feedback. Please try again.');
     } finally {
       setUpdatingId(null);
     }
   };
 
-  if (loading) return <div className="loading">Loading pending feedbacks...</div>;
+  if (loading) {
+    return (
+      <div className="dashboard">
+        <div className="loading">Loading pending feedbacks...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="dashboard">
-      <h1>Pending Feedbacks</h1>
-      {error && <div className="error">{error}</div>}
+      <div className="dashboard-header">
+        <h1>Pending Feedbacks</h1>
+        <button onClick={fetchPending} className="refresh-btn">
+          Refresh
+        </button>
+      </div>
+
+      {error && (
+        <div className="error-message">
+          {error}
+        </div>
+      )}
+
+      {successMessage && (
+        <div className="success-message">
+          {successMessage}
+        </div>
+      )}
+
       {pending.length === 0 ? (
-        <p>No pending feedbacks. Great job!</p>
+        <div className="empty-state">
+          <h3>No pending feedbacks!</h3>
+          <p>All your recommendations have been reviewed.</p>
+          <p>New recommendations will appear here for your feedback.</p>
+        </div>
       ) : (
-        <div className="history-list">
+        <div className="feedback-list">
           {pending.map(item => (
-            <div key={item._id} className="history-item">
-              <h4>{new Date(item.createdAt || item.createAt).toLocaleString()}</h4>
-              <p>Method: {item.method}</p>
-              <div className="recommended-crops">
-                {(item.recommendations && item.recommendations.length > 0) ? (
-                  item.recommendations.map((rec, idx) => <span key={idx} className="crop-tag">{rec.crop || rec}</span>)
-                ) : <em>No crop recommendations</em>}
+            <div key={item._id} className="feedback-item">
+              <div className="feedback-header">
+                <h3>
+                  {item.method === 'soil_params' && 'Soil Parameters Analysis'}
+                  {item.method === 'soil_image' && 'Soil Image Analysis'}
+                  {item.method === 'region' && 'Region Analysis'}
+                </h3>
+                <span className="date">
+                  {new Date(item.createdAt || item.createAt).toLocaleDateString()}
+                </span>
               </div>
 
-              <div style={{ marginTop: 8 }}>
-                <button
-                  disabled={updatingId === item._id}
-                  onClick={() => submitFeedback(item._id, true)}
-                  style={{ marginRight: 8 }}
-                >
-                  ✅ Useful
-                </button>
-                <button
-                  disabled={updatingId === item._id}
-                  onClick={() => submitFeedback(item._1d, false)}
-                >
-                  ❌ Not useful
-                </button>
+              <div className="feedback-details">
+                {item.method === 'soil_params' && item.inputData && (
+                  <div className="input-details">
+                    <p><strong>Soil Parameters:</strong></p>
+                    <div className="params-grid">
+                      <span>N: {item.inputData.N}</span>
+                      <span>P: {item.inputData.P}</span>
+                      <span>K: {item.inputData.K}</span>
+                      <span>pH: {item.inputData.ph}</span>
+                      <span>Temp: {item.inputData.temperature}°C</span>
+                      <span>Humidity: {item.inputData.humidity}%</span>
+                    </div>
+                  </div>
+                )}
+
+                {item.method === 'soil_image' && item.inputData && (
+                  <div className="input-details">
+                    <p><strong>Detected Soil Type:</strong> {item.inputData.soil_type || 'Unknown'}</p>
+                  </div>
+                )}
+
+                {item.method === 'region' && item.inputData && (
+                  <div className="input-details">
+                    <p><strong>Location:</strong> {item.inputData.region}{item.inputData.district ? `, ${item.inputData.district}` : ''}</p>
+                  </div>
+                )}
+
+                <div className="recommendations">
+                  <p><strong>Recommended Crops:</strong></p>
+                  <div className="crops-list">
+                    {item.recommendations && item.recommendations.length > 0 ? (
+                      item.recommendations.map((rec, idx) => (
+                        <div key={idx} className="crop-recommendation">
+                          <span className="crop-name">{rec.crop || rec}</span>
+                          {rec.confidence && (
+                            <span className="confidence">
+                              {Math.round(rec.confidence * 100)}% confidence
+                            </span>
+                          )}
+                          {rec.reason && (
+                            <span className="reason">{rec.reason}</span>
+                          )}
+                        </div>
+                      ))
+                    ) : (
+                      <p className="no-crops">No specific crop recommendations</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="feedback-actions">
+                <p><strong>Was this recommendation useful?</strong></p>
+                <div className="action-buttons">
+                  <button
+                    className="btn-success"
+                    disabled={updatingId === item._id}
+                    onClick={() => submitFeedback(item._id, true)}
+                  >
+                    {updatingId === item._id ? 'Updating...' : '✅ Yes, Useful'}
+                  </button>
+                  <button
+                    className="btn-danger"
+                    disabled={updatingId === item._id}
+                    onClick={() => submitFeedback(item._id, false)}
+                  >
+                    {updatingId === item._id ? 'Updating...' : '❌ Not Useful'}
+                  </button>
+                </div>
               </div>
             </div>
           ))}
