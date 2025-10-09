@@ -1,4 +1,3 @@
-// frontend/src/pages/Feedback.js
 import React, { useState, useEffect } from 'react';
 import { recommendationAPI } from '../services/recommendationAPI';
 import '../styles/Dashboard.css';
@@ -22,7 +21,6 @@ const Feedback = () => {
       
       console.log('Feedback page - history response:', response);
       
-      // Filter for pending recommendations from the history
       const allRecommendations = Array.isArray(response.data) 
         ? response.data 
         : response.data?.data || response.data?.recommendations || [];
@@ -57,7 +55,6 @@ const Feedback = () => {
       
       setSuccessMessage(`Feedback submitted successfully!`);
       
-      // Remove the item from the local state
       setPending(prev => prev.filter(item => item._id !== id));
       
     } catch (error) {
@@ -70,50 +67,71 @@ const Feedback = () => {
 
   if (loading) {
     return (
-      <div className="dashboard">
-        <div className="loading">Loading pending feedbacks...</div>
+      <div className="dashboard enhanced-page">
+        <div className="loading-container">
+          <div className="loading-spinner"></div>
+          <p className="loading-text">Loading pending feedbacks...</p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="dashboard">
-      <div className="dashboard-header">
-        <h1>Pending Feedbacks</h1>
-        <button onClick={fetchPending} className="refresh-btn">
+    <div className="dashboard enhanced-page">
+      <div className="dashboard-header animate-slide-down">
+        <div className="header-content">
+          <div className="header-icon">💬</div>
+          <div>
+            <h1 className="gradient-text">Pending Feedbacks</h1>
+            <p className="subtitle">Help us improve by providing your feedback</p>
+          </div>
+        </div>
+        <button onClick={fetchPending} className="refresh-btn btn-modern">
+          <span className="btn-icon">🔄</span>
           Refresh
         </button>
       </div>
 
       {error && (
-        <div className="error-message">
+        <div className="error-message modern-alert animate-shake">
+          <span className="alert-icon">⚠️</span>
           {error}
         </div>
       )}
 
       {successMessage && (
-        <div className="success-message">
+        <div className="success-message modern-alert animate-fade-in">
+          <span className="alert-icon">✅</span>
           {successMessage}
         </div>
       )}
 
       {pending.length === 0 ? (
-        <div className="empty-state">
+        <div className="empty-state modern-empty card-modern animate-fade-in">
+          <div className="empty-icon">🎉</div>
           <h3>No pending feedbacks!</h3>
           <p>All your recommendations have been reviewed.</p>
           <p>New recommendations will appear here for your feedback.</p>
         </div>
       ) : (
         <div className="feedback-list">
-          {pending.map(item => (
-            <div key={item._id} className="feedback-item">
+          {pending.map((item, index) => (
+            <div key={item._id} className="feedback-item modern-card card-hover animate-slide-up" style={{ animationDelay: `${index * 0.1}s` }}>
               <div className="feedback-header">
-                <h3>
-                  {item.method === 'soil_params' && 'Soil Parameters Analysis'}
-                  {item.method === 'soil_image' && 'Soil Image Analysis'}
-                  {item.method === 'region' && 'Region Analysis'}
-                </h3>
+                <div className="header-left">
+                  <span className="method-icon">
+                    {item.method === 'soil_params' && '🔬'}
+                    {item.method === 'soil_image' && '📸'}
+                    {item.method === 'region' && '🗺️'}
+                  </span>
+                  <h3>
+                    {item.method === 'soil_params' && 'Soil Parameters Analysis'}
+                    {item.method === 'soil_image' && 'Soil Image Analysis'}
+                    {item.method === 'region' && 'Region Analysis'}
+                  </h3>
+                </div>
                 <span className="date">
+                  <span className="date-icon">📅</span>
                   {new Date(item.createdAt || item.createAt).toLocaleDateString()}
                 </span>
               </div>
@@ -121,32 +139,46 @@ const Feedback = () => {
               <div className="feedback-details">
                 {item.method === 'soil_params' && item.inputData && (
                   <div className="input-details">
-                    <p><strong>Soil Parameters:</strong></p>
+                    <p className="detail-label">
+                      <span className="label-icon">📊</span>
+                      <strong>Soil Parameters:</strong>
+                    </p>
                     <div className="params-grid">
-                      <span>N: {item.inputData.N}</span>
-                      <span>P: {item.inputData.P}</span>
-                      <span>K: {item.inputData.K}</span>
-                      <span>pH: {item.inputData.ph}</span>
-                      <span>Temp: {item.inputData.temperature}°C</span>
-                      <span>Humidity: {item.inputData.humidity}%</span>
+                      <span className="param-chip">N: {item.inputData.N}</span>
+                      <span className="param-chip">P: {item.inputData.P}</span>
+                      <span className="param-chip">K: {item.inputData.K}</span>
+                      <span className="param-chip">pH: {item.inputData.ph}</span>
+                      <span className="param-chip">🌡️ {item.inputData.temperature}°C</span>
+                      <span className="param-chip">💧 {item.inputData.humidity}%</span>
                     </div>
                   </div>
                 )}
 
                 {item.method === 'soil_image' && item.inputData && (
                   <div className="input-details">
-                    <p><strong>Detected Soil Type:</strong> {item.inputData.soil_type || 'Unknown'}</p>
+                    <p className="detail-label">
+                      <span className="label-icon">🏞️</span>
+                      <strong>Detected Soil Type:</strong> 
+                      <span className="soil-type-value">{item.inputData.soil_type || 'Unknown'}</span>
+                    </p>
                   </div>
                 )}
 
                 {item.method === 'region' && item.inputData && (
                   <div className="input-details">
-                    <p><strong>Location:</strong> {item.inputData.region}{item.inputData.district ? `, ${item.inputData.district}` : ''}</p>
+                    <p className="detail-label">
+                      <span className="label-icon">📍</span>
+                      <strong>Location:</strong> 
+                      <span className="location-value">{item.inputData.region}{item.inputData.district ? `, ${item.inputData.district}` : ''}</span>
+                    </p>
                   </div>
                 )}
 
                 <div className="recommendations">
-                  <p><strong>Recommended Crops:</strong></p>
+                  <p className="detail-label">
+                    <span className="label-icon">🌾</span>
+                    <strong>Recommended Crops:</strong>
+                  </p>
                   <div className="crops-list">
                     {item.recommendations && item.recommendations.length > 0 ? (
                       item.recommendations.map((rec, idx) => (
@@ -154,7 +186,8 @@ const Feedback = () => {
                           <span className="crop-name">{rec.crop || rec}</span>
                           {rec.confidence && (
                             <span className="confidence">
-                              {Math.round(rec.confidence * 100)}% confidence
+                              <span className="confidence-icon">📊</span>
+                              {Math.round(rec.confidence * 100)}%
                             </span>
                           )}
                           {rec.reason && (
@@ -170,21 +203,44 @@ const Feedback = () => {
               </div>
 
               <div className="feedback-actions">
-                <p><strong>Was this recommendation useful?</strong></p>
+                <p className="action-question">
+                  <span className="question-icon">❓</span>
+                  <strong>Was this recommendation useful?</strong>
+                </p>
                 <div className="action-buttons">
                   <button
-                    className="btn-success"
+                    className="btn-success btn-feedback"
                     disabled={updatingId === item._id}
                     onClick={() => submitFeedback(item._id, true)}
                   >
-                    {updatingId === item._id ? 'Updating...' : '✅ Yes, Useful'}
+                    {updatingId === item._id ? (
+                      <>
+                        <span className="btn-spinner"></span>
+                        Updating...
+                      </>
+                    ) : (
+                      <>
+                        <span className="btn-icon">✅</span>
+                        Yes, Useful
+                      </>
+                    )}
                   </button>
                   <button
-                    className="btn-danger"
+                    className="btn-danger btn-feedback"
                     disabled={updatingId === item._id}
                     onClick={() => submitFeedback(item._id, false)}
                   >
-                    {updatingId === item._id ? 'Updating...' : '❌ Not Useful'}
+                    {updatingId === item._id ? (
+                      <>
+                        <span className="btn-spinner"></span>
+                        Updating...
+                      </>
+                    ) : (
+                      <>
+                        <span className="btn-icon">❌</span>
+                        Not Useful
+                      </>
+                    )}
                   </button>
                 </div>
               </div>
