@@ -8,7 +8,7 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import SoilAnalysis from './pages/SoilAnalysis';
 import ImageAnalysis from './pages/ImageAnalysis';
-import RegionAnalysis from './pages/RegionAnalysis';  // ✅ correct
+import RegionAnalysis from './pages/RegionAnalysis';
 import './styles/App.css';
 import WeatherPage from './pages/WeatherPage';
 import Feedback from './pages/Feedback';

@@ -372,7 +372,7 @@ class PredictionService:
         if not self.models_loaded:
             raise RuntimeError("Models not loaded. Please check model loading step.")
 
-    # ---------------- Soil Params ----------------
+    
     def predict_from_soil_params(self, soil_params: Dict[str, Any]) -> Dict[str, Any]:
         try:
             self._check_models_loaded()
@@ -422,7 +422,7 @@ class PredictionService:
             logger.error(f"Error in soil params prediction: {str(e)}")
             raise
 
-    # ---------------- Soil Image (PyTorch) ----------------
+    
     def predict_from_soil_image(self, image_bytes: bytes) -> Dict[str, Any]:
         try:
             if self.cnn_model is None:
@@ -463,7 +463,7 @@ class PredictionService:
                 {
                     "crop": crop,
                     "confidence": confidence,
-                    "reason": f"Thrives in {predicted_class} soil conditions"
+                    "reason": f"Thrives in {predicted_class} conditions"
                 }
                 for crop in recommended_crops[:3]
             ]
@@ -492,7 +492,7 @@ class PredictionService:
             "soil_confidence": 0.0
         }
 
-    # ---------------- Region ----------------
+    
     def predict_from_region(self, region: str, weather_data: Dict[str, float]) -> Dict[str, Any]:
         self._check_models_loaded()
         try:

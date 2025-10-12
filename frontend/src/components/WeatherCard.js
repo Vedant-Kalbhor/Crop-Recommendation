@@ -29,10 +29,10 @@ const WeatherCard = ({ weather }) => {
           <span className="label">Condition:</span>
           <span className="value capitalize">{weather.description}</span>
         </div>
-        <div className="weather-item">
+        {/* <div className="weather-item">
           <span className="label">Location:</span>
           <span className="value">{weather.location}, {weather.country}</span>
-        </div>
+        </div> */}
       </div>
     </div>
   );

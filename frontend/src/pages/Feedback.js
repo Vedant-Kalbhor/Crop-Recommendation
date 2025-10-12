@@ -174,7 +174,7 @@ const Feedback = () => {
                   </div>
                 )}
 
-                <div className="recommendations">
+                {/* <div className="recommendations">
                   <p className="detail-label">
                     <span className="label-icon">🌾</span>
                     <strong>Recommended Crops:</strong>
@@ -199,7 +199,7 @@ const Feedback = () => {
                       <p className="no-crops">No specific crop recommendations</p>
                     )}
                   </div>
-                </div>
+                </div> */}
               </div>
 
               <div className="feedback-actions">

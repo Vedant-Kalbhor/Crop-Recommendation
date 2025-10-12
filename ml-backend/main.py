@@ -275,13 +275,6 @@
 #------
 
 
-"""
-FastAPI app for Crop Recommendation ML API
-- Soil params prediction
-- Soil image prediction
-- Region-based recommendations (using precomputed stats + metadata)
-"""
-
 from fastapi import FastAPI, File, UploadFile, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse

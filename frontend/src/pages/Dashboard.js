@@ -158,7 +158,7 @@ const Dashboard = () => {
                     </div>
                   )}
                 </div>
-                <div className="recommended-crops">
+                {/* <div className="recommended-crops">
                   {item.recommendations && item.recommendations.length > 0 ? (
                     item.recommendations.slice(0, 3).map((rec, idx) => (
                       <span key={idx} className="crop-tag">
@@ -169,7 +169,7 @@ const Dashboard = () => {
                   ) : (
                     <em>No crop recommendations</em>
                   )}
-                </div>
+                </div> */}
                 {item.successStatus === 'pending' && (
                   <div className="feedback-reminder">
                     <small>

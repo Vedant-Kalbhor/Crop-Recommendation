@@ -261,7 +261,7 @@ const SoilImageForm = () => {
           </div>
 
           <div className="soil-type-info">
-            <h4>About {result.soil_type} Soil:</h4>
+            <h4>About {result.soil_type} :</h4>
             <p>
               {getsoil_typeDescription(result.soil_type)}
             </p>

@@ -83,7 +83,7 @@ const ImageAnalysis = () => {
         </div>
         <p className="recommendation-reason">{rec.reason || 'No reason provided'}</p>
         <div className="crop-properties">
-          <span className="property-tag">Ideal for {result.soil_type || 'unknown'} soil</span>
+          <span className="property-tag">Ideal for {result.soil_type || 'unknown'} </span>
         </div>
       </div>
     ));
@@ -163,7 +163,7 @@ const ImageAnalysis = () => {
 
             {result.soil_type && (
               <div className="soil-type-info">
-                <h4>About {result.soil_type} Soil:</h4>
+                <h4>About {result.soil_type} :</h4>
                 <p>{getsoil_typeDescription(result.soil_type)}</p>
               </div>
             )}
@@ -174,16 +174,16 @@ const ImageAnalysis = () => {
   );
 };
 
-// ✅ Updated helper function with only 4 soil types
+
 const getsoil_typeDescription = (soil_type) => {
   const descriptions = {
-    alluvial: 'Alluvial soil is highly fertile and rich in nutrients. It is ideal for crops like rice, wheat, sugarcane, and pulses.',
-    clay: 'Clay soil is heavy and retains water well. It is rich in nutrients but can be difficult to work with when wet. Suitable for crops like rice and cotton.',
-    black: 'Black soil, also called Regur soil, is moisture-retentive and rich in lime, calcium, and magnesium. It is ideal for cotton, soybean, and maize.',
-    red: 'Red soil contains a high amount of iron oxide, giving it a reddish color. It is less fertile but suitable for crops like groundnut, pulses, and millets.'
+    Alluvial_Soil: 'Alluvial soil is highly fertile and rich in nutrients. It is ideal for crops like rice, wheat, sugarcane, and pulses.',
+    Clay_Soil: 'Clay soil is heavy and retains water well. It is rich in nutrients but can be difficult to work with when wet. Suitable for crops like rice and cotton.',
+    Black_Soil: 'Black soil, also called Regur soil, is moisture-retentive and rich in lime, calcium, and magnesium. It is ideal for cotton, soybean, and maize.',
+    Red_Soil: 'Red soil contains a high amount of iron oxide, giving it a reddish color. It is less fertile but suitable for crops like groundnut, pulses, and millets.'
   };
 
-  return descriptions[soil_type.toLowerCase()] || 'This soil type has specific characteristics that make it suitable for certain crops.';
+  return descriptions[soil_type] || 'This soil type has specific characteristics that make it suitable for certain crops.';
 };
 
 export default ImageAnalysis;
